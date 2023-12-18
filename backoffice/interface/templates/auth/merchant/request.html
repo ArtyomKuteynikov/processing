@@ -1,0 +1,15 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+        <form method="post" action="{% url 'request' %}">
+            <div class="message">
+                <p>{{ message }}</p>
+            </div>
+            <h3>Хочу стать мерчантом</h3>
+            <p>Отправить заявку на регистрацию</p>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="button is-block is-info is-fullwidth">Отправить заявку</button>
+        </form>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="col-xl-12">
+    <div class="card">
+        <div style="padding: 5%; overflow-x:auto">
+
+            <table class="table">
+                <thead>
+                <tr><h6>Ввод</h6></tr>
+                </thead>
+                <thead>
+                <tr>
+                    <th scope="col"></th>
+                    {% for i in crypto %}
+                    <th scope="col">{{ i }}</th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% load custom_tags %}
+                {% for i in fiat %}
+                <tr>
+                    <td><b>{{ i }}</b></td>
+                    {% for j in crypto %}
+                    <td><input class="form-check-input" type="checkbox" {% dict_get inputs i j %}></td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                </tbody>
+
+            </table>
+
+            <table class="table">
+                <thead>
+                <tr><h6>Вывод</h6></tr>
+                </thead>
+                <thead>
+                <tr>
+                    <th scope="col"></th>
+                    {% for i in crypto %}
+                    <th scope="col">{{ i }}</th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for i in fiat %}
+                <tr>
+                    <td><b>{{ i }}</b></td>
+                    {% for j in crypto %}
+                    <td><input class="form-check-input" type="checkbox" {% dict_get outputs i j %}></td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

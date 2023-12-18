@@ -1,0 +1,12 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+        <form method="post" action="{% url '2fa' %}?session={{ session }}">
+            <h3>Войти в аккаунт</h3>
+            <p>Введите код из Google Authenticator</p>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="button is-block is-info is-fullwidth">Войти</button>
+        </form>
+{% endblock %}

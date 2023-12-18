@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    form {
+            min-width: fit-content;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .g-recaptcha{
+           margin: 15px auto !important;
+           width: auto !important;
+           height: auto !important;
+           text-align: -webkit-center;
+           text-align: -moz-center;
+           text-align: -o-center;
+           text-align: -ms-center;
+        }
+        .errorlist
+        {
+            padding: 0;
+            background: #ff555555;
+            border-radius: 20px;
+        }
+        .error input, .error select {
+            border: 2px red solid;
+            }
+        .button-send{
+        max-width: 40px
+        }
+
+    #openFile {
+        display: none;
+    }
+
+    form {
+        margin: 20px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .form-control {
+        font-size: 12px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    .tab.active {
+        background-color: #5071BF4D !important;
+    }
+
+
+    .tab:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    tr.active {
+        background-color: #5071BF4D !important;
+    }
+
+    p {
+        font-size: 12px;
+    }
+
+
+    tr:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    table {
+        margin-top: 40px;
+    }
+
+    th div {
+        margin-top: -40px;
+        position: absolute;
+    }
+
+    /* design */
+    table {
+        border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+        background: #EEE;
+    }
+
+    p.mytabs {
+        margin: 0;
+    }
+
+</style>
+
+<style>
+
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .form-control {
+        font-size: 12px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    .tab.active {
+        background-color: #5071BF4D !important;
+    }
+
+
+    .tab:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    tr.active {
+        background-color: #5071BF4D !important;
+    }
+
+    p {
+        font-size: 12px;
+    }
+
+
+    tr:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    table {
+        margin-top: 40px;
+    }
+
+    th div {
+        margin-top: -40px;
+        position: absolute;
+    }
+
+    /* design */
+    table {
+        border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+        background: #EEE;
+    }
+
+    p.mytabs {
+        padding: 1%
+        font-size: 16px;
+        margin: 0;
+    }
+
+    h6 {
+        margin: 0;
+    }
+
+</style>
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card tab {% if transactions %} active {% endif %}"
+             onclick="window.location.href='/transactions'; return false">
+            <div class="">
+                <p class="mytabs">Транзакции</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card tab {% if orders %} active {% endif %}"
+             onclick="window.location.href='/orders'; return false">
+            <div class="">
+                <p class="mytabs">Ордеры</p>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card tab {% if withdrawals %} active {% endif %}"
+             onclick="window.location.href='/withdrawals'; return false">
+            <div class="">
+                <p class="mytabs">Заявки на вывод</p>
+
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="card-body pt-3">
+                <div class="row">
+                    <div class="card col-xl-3">
+                        <br>
+                        {% load custom_tags %}
+                        {% for i in balances %}
+
+                        <h6>{{ i.balance_link }}: ${% divide i.amount i.balance_link.currency.denomination %}</h6><br>
+                        {% endfor %}
+                    </div>
+                    <div class="card col-xl-3">
+
+                    </div>
+                    <div class="card col-xl-3">
+
+                    </div>
+                    <div class="card col-xl-3"
+                         style="align-content: center;display: flex;flex-wrap: wrap;flex-direction: row;justify-content: space-around;padding: 2%">
+                        <button onclick="openDeposit()" class="btn btn-primary"
+                                style="color: #fff !important;max-height: 30px;">Пополнить
+                        </button>
+                        <button onclick="openWithdrawal()" class="btn btn-primary"
+                                style="color: #fff !important;max-height: 30px;">Вывести
+                        </button>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        {% block table %}
+                        {% endblock %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="deposit" tabindex="-1" role="dialog" aria-labelledby="deposit"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Пополнение баланса (USDT_TRC20)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p class="form-control" style="display: flex;justify-content: space-between;" id="card"><span
+                        id="cardNumber">{{ address }}</span>
+                    <button onclick="copyToClipboard('cardNumber')" class="btn btn-light">Copy</button>
+                </p>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?data={{ address }};size=100x100"/>
+            </div>
+            <form method="post" action="{% url 'deposit' %}">
+                {% csrf_token %}
+                <input class="form-control" name="amount" max="{{ max_amount }}" type="number"
+                       placeholder="Сумма пополнения">
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button id="send" type="submit" class="btn btn-primary">Пополнил</button>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="withdrawal" tabindex="-1" role="dialog" aria-labelledby="withdrawal"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Вывод средств</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'withdrawal' %}">
+                {% csrf_token %}
+                <div class="modal-body" style="text-align: center;">
+                    {{ form }}
+                </div>
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button id="withdraw" type="submit" class="btn btn-primary">Вывести</button>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.innerText;
+
+        navigator.clipboard.writeText(text).then(function () {
+            console.log('Текст скопирован: ' + text);
+        }).catch(function (err) {
+            console.error('Не удалось скопировать текст: ', err);
+        });
+    }
+
+    function openDeposit() {
+        $('#deposit').modal('show');
+    }
+
+    function openWithdrawal() {
+        $('#withdrawal').modal('show');
+    }
+</script>
+
+{% endblock %}

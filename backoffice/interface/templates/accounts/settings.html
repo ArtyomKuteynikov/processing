@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    form {
+            min-width: fit-content;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .g-recaptcha{
+           margin: 15px auto !important;
+           width: auto !important;
+           height: auto !important;
+           text-align: -webkit-center;
+           text-align: -moz-center;
+           text-align: -o-center;
+           text-align: -ms-center;
+        }
+        .errorlist
+        {
+            padding: 0;
+            background: #ff555555;
+            border-radius: 20px;
+        }
+        .error input, .error select {
+            border: 2px red solid;
+            }
+        .button-send{
+        max-width: 40px
+        }
+
+    #openFile {
+        display: none;
+    }
+
+    form {
+        margin: 20px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .form-control {
+        font-size: 12px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    .tab.active {
+        background-color: #5071BF4D !important;
+    }
+
+
+    .tab:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    tr.active {
+        background-color: #5071BF4D !important;
+    }
+
+    p {
+        font-size: 12px;
+    }
+
+
+    tr:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    table {
+        margin-top: 40px;
+    }
+
+    th div {
+        margin-top: -40px;
+        position: absolute;
+    }
+
+    /* design */
+    table {
+        border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+        background: #EEE;
+    }
+
+    p.mytabs {
+        margin: 0;
+    }
+
+</style>
+
+
+<div class="row">
+    <div class="modal-dialog col-md-4">
+
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Настройки аккаунта</h5>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="settingsForm" action="{% url 'settings' %}">
+                    {% csrf_token %}
+                    <label for="phone">Телефон</label>
+                    <input name="phone" id="phone" class="form-control" placeholder="Введите номер телефона"
+                           value="{{ user.customer.phone }}">
+                    <label for="email">Email</label>
+                    <input name="email" id="email" class="form-control" placeholder="Введите email"
+                           value="{{ user.email }}">
+                    <div class="form-check form-switch" style="padding-left: 2rem">
+                        <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault" {% if user.customer.method_2fa %} checked {% endif %}>
+                        <label class="form-check-label" for="flexSwitchCheckDefault">2FA</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="confirm" class="btn btn-primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-dialog col-md-8"></div>
+</div>
+<div class="row">
+    <div class="modal-dialog col-md-4">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Безопасность</h5>
+            </div>
+            <div class="modal-body">
+                <label for="link">Смена пароля</label><br>
+                <a id="link" class="btn btn-outline-primary" href="/change-password/">Поменять пароль</a>
+            </div>
+        </div>
+    </div>
+    <div class="modal-dialog col-md-8"></div>
+</div>
+<div class="row">
+    <div class="modal-dialog col-md-4">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Уведомления</h5>
+            </div>
+            <div class="modal-body">
+                <label for="link">Дополнительный email</label>
+                <input class="form-control" placeholder="Введите свою почту">
+            </div>
+        </div>
+    </div>
+    <div class="modal-dialog col-md-8"></div>
+</div>
+
+<div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отключение 2FA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'disable-2fa' %}">
+                <div class="modal-body">
+                    <p>На ваш email было направлено письмо с кодом подтверждени, введите его. Если у вас нет доступа
+                        к почте - свяжитесь со службой поддержки.</p>
+
+                    {% csrf_token %}
+                    <label for="code">Код подтверждения</label>
+                    <input id="code" name="code" placeholder="Введите код подтверждения">
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="submit" class="btn btn-primary">Отправить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="accountConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Изменение данных</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вывод средств и p2p транзакции будут недоступны втечение 24 часов.</p>
+                <p>Прежние даные нельзя будет использвать для повторной регистрации в течение 30 дней</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button id="send" type="button" class="btn btn-primary">Отправить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkbox = document.getElementById('flexSwitchCheckDefault');
+        const confirmButton = document.getElementById('confirm');
+        const settingsForm = document.getElementById('settingsForm');
+        const sendButton = document.getElementById('send');
+
+        checkbox.addEventListener('change', function () {
+            // Отправка запроса при изменении состояния чекбокса
+            const isChecked = checkbox.checked;
+            if (!isChecked) {
+                // Отправить запрос на отключение 2FA
+                fetch('/disable-2fa/', {
+                    method: 'POST',
+                    // Дополнительные параметры запроса, если необходимо
+                }).then(response => {
+                    if (response.ok) {
+                        // В случае успешного ответа, открываем модальное окно для ввода кода подтверждения
+                        console.error('Отключено');
+                    } else {
+                        // Обработка ошибки
+                        console.error('Ошибка при отключении 2FA');
+                    }
+                }).catch(error => {
+                    console.error('Ошибка при выполнении запроса:', error);
+                });
+                $('#confirmationModal').modal('show');
+            }
+        });
+
+        sendButton.addEventListener('click', function () {
+            settingsForm.submit();
+        });
+
+        confirmButton.addEventListener('click', function () {
+            $('#accountConfirmationModal').modal('show');
+        });
+    });
+</script>
+
+{% endblock %}

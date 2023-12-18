@@ -1,0 +1,222 @@
+<!-- templates/support.html -->
+
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    form {
+            min-width: fit-content;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .g-recaptcha{
+           margin: 15px auto !important;
+           width: auto !important;
+           height: auto !important;
+           text-align: -webkit-center;
+           text-align: -moz-center;
+           text-align: -o-center;
+           text-align: -ms-center;
+        }
+        .errorlist
+        {
+            padding: 0;
+            background: #ff555555;
+            border-radius: 20px;
+        }
+        .error input, .error select {
+            border: 2px red solid;
+            }
+        .button-send{
+        max-width: 40px
+        }
+
+    #openFile {
+        display: none;
+    }
+
+    form {
+        margin: 20px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .form-control {
+        font-size: 12px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    .tab.active {
+        background-color: #5071BF4D !important;
+    }
+
+
+    .tab:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    tr.active {
+        background-color: #5071BF4D !important;
+    }
+
+    p {
+        font-size: 12px;
+    }
+
+
+    tr:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    table {
+        margin-top: 40px;
+    }
+
+    th div {
+        margin-top: -40px;
+        position: absolute;
+    }
+
+    /* design */
+    table {
+        border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+        background: #EEE;
+    }
+
+    p.mytabs {
+        margin: 0;
+    }
+
+</style>
+<div class="row">
+
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-body pt-3">
+                <div style="display: flex;flex-direction: row;padding: 2%">
+                    <div style="padding: 2%">
+                        <button data-bs-toggle="modal" data-bs-target="#basicModal" style="color: #fff !important"
+                                type="button" class="btn btn-primary">Создать тикет
+                        </button>
+                    </div>
+                    <div style="display: flex;padding: 2%">
+                        <input class="form-control" id="search" type="text" name="query" placeholder="Поиск"
+                               title="Enter search keyword">
+                        <button class="btn btn-light" type="submit" title="Search" onclick="search(document.getElementById('search').value)"><i class="bi bi-search"></i></button>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th scope="col">Дата</th>
+                            <th scope="col">Тикет</th>
+                            <th scope="col">Тема</th>
+                            <th scope="col">Статус</th>
+                            <th scope="col"></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for i in tickets %}
+                        <tr onclick="window.location.href='/ticket/{{ i.id }}'; return false"
+                            class="">
+                            <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+                            <td>
+                                #{{ i.id }}
+                            </td>
+                            <td>
+                                {{ i.title }}
+                            </td>
+                            <td>
+                                {{ i.status }}
+                            </td>
+                            <td>
+                                {% if i.unread %}
+                                <span class="badge rounded-pill bg-primary">{{ i.unread }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card-body">
+            <h5 class="card-title">FAQ</h5>
+
+            {% for i in faq %}
+            <div class="accordion accordion-flush" id="accordionFlushExample">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="flush-heading{{ i.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#flush-collapse{{ i.id }}" aria-expanded="false"
+                                aria-controls="flush-collapseOne">
+                            {{ i.title }}
+                        </button>
+                    </h2>
+                    <div id="flush-collapse{{ i.id }}" class="accordion-collapse collapse"
+                         aria-labelledby="flush-headingOne"
+                         data-bs-parent="#accordionFlushExample" style="">
+                        <div class="accordion-body">
+                            {{ i.text | safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="basicModal" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{% url 'support' %}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Создать тикет</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="submit" class="btn btn-primary">Отправить</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+{% endblock %}

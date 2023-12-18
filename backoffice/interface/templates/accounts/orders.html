@@ -1,0 +1,40 @@
+{% extends "finances.html" %}
+
+{% block table %}
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Дата и время</th>
+        <th scope="col">Сайт</th>
+        <th scope="col">Входящее</th>
+        <th scope="col">Валюта</th>
+        <th scope="col">Исходящее</th>
+        <th scope="col">Валюта</th>
+        <th scope="col">Статус</th>
+        <th scope="col">Тип транзакции</th>
+        <th scope="col">ID клиента</th>
+        <th scope="col">ID внешнего ордера</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for i in orders %}
+    <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td>{{ i.order_site.domain }}</td>
+        <td>${{ i.input_link }}</td>
+        <td>{{ i.input_amount }}</td>
+        <td>${{ i.output_link }}</td>
+        <td>{{ i.output_amount }}</td>
+        <td>{{ i.status }}</td>
+        <td>{{ i.side }}</td>
+        <td>{{ i.client_id }}</td>
+        <td>{{ i.external_id }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+
+{% endblock %}

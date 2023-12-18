@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-bullseye
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-vol:/var/lib/postgresql/data
+    networks:
+      - api-network
+  api:
+    build: .
+    env_file: 
+      - .env
+    command: bash -c "pip install -r requirements.txt &&python manage.py migrate && uwsgi --socket 0.0.0.0:9000 --py-autoreload 1 --ini uwsgi.ini"
+    restart: always
+    volumes:
+      - .:/app
+    depends_on:
+        - db
+        - redis
+    ports:
+      - "19000:9000"
+    links:
+      - db:db
+    networks:
+      - api-network
+  redis:
+    image: library/redis:5.0-alpine
+    restart: unless-stopped
+    networks:
+      - api-network
+
+networks:
+  api-network:
+    driver: bridge
+
+volumes:
+  pg-vol:
+  

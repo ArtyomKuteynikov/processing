@@ -1,0 +1,72 @@
+{% extends "finances.html" %}
+
+{% block table %}
+{% load static %}
+<style>
+    .status-NEW {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge.png' %}');
+        background-size: cover;
+    }
+
+    .status-APPROVED {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (2).png' %}');
+        background-size: cover;
+    }
+
+    .status-PAID {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (1).png' %}');
+        background-size: cover;
+    }
+
+    .status-CANCELED {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (3).png' %}');
+        background-size: cover;
+    }
+
+    .status-REJECTED {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (3).png' %}');
+        background-size: cover;
+    }
+</style>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Дата и время</th>
+        <th scope="col">Сумма</th>
+        <th scope="col">Адрес</th>
+        <th scope="col">Статус</th>
+        <th scope="col">Описание</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% load custom_tags %}
+    {% for i in withdrawals %}
+    <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td>${% divide i.amount i.currency.currency.denomination %}</td>
+        <td>{{ i.address }}</td>
+        <td><i class="status-{{ i.status }}"></i></td>
+        <td>{{ i.comment }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "finances.html" %}
+
+{% block table %}
+{% load static %}
+<style>
+    .status-0 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge.png' %}');
+        background-size: cover;
+    }
+
+    .status-1 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (1).png' %}');
+        background-size: cover;
+    }
+
+    .status-2 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (2).png' %}');
+        background-size: cover;
+    }
+
+    .status-3 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (2).png' %}');
+        background-size: cover;
+    }
+
+    .status-4 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (3).png' %}');
+        background-size: cover;
+    }
+
+    .type-0 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/coins-stacked-03.png' %}');
+        background-size: cover;
+    }
+
+    .type-1 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/user-up-01.png' %}');
+        background-size: cover;
+    }
+
+    .type-2 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/coins-stacked-03.png' %}');
+        background-size: cover;
+    }
+
+    .type-3 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/coins-swap-02.png' %}');
+        background-size: cover;
+    }
+
+    .type-4 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/credit-card-upload.png' %}');
+        background-size: cover;
+    }
+
+    .type-5 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/credit-card-down.png' %}');
+        background-size: cover;
+    }
+
+    .type-5 {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url('{% static '/icons/percent.png' %}');
+        background-size: cover;
+    }
+</style>
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Дата и время</th>
+        <th scope="col">Сайт</th>
+        <th scope="col">Сумма</th>
+        <th scope="col">Валюта</th>
+        <th scope="col">Тип транзакции</th>
+        <th scope="col">Статус</th>
+        <th scope="col">Описание</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% load custom_tags %}
+    {% for i in transactions %}
+    <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td>{{ i.site.domain }}</td>
+        <td>${% divide i.amount i.link.currency.denomination %}</td>
+        <td>{{ i.link }}</td>
+        <td><i class="type-{{ i.type }}"></i></td>
+        <td><i class="status-{{ i.status }}"></i></td>
+        <td>{{ i.category }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+        <form method="post" action="{% url 'merchant1' %}">
+            <h3>Зарегистрироваться</h3>
+            <p>Зарегистрировать аккаунт мерчанта</p>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <p style="display: flex;">
+                <input type="checkbox" name="agree_terms" required="" value="Я принимаю условия ослуживания и политику конфиденциальности" id="id_agree_terms" style="width: 20px;">Я принимаю условия ослуживания и политику конфиденциальности</p>
+            <button type="submit" class="button is-block is-info is-fullwidth">Создать аккаунт</button>
+        </form>
+        {% endblock %}

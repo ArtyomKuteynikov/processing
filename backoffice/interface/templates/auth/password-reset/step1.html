@@ -1,0 +1,13 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+        <form method="post" action="{% url 'reset1' %}">
+            <h3>Сбросить пароль</h3>
+            <p>Важно - в течение 24 часовпосле смены паролявы не сможете выводить средства</p>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="button is-block is-info is-fullwidth">Далее</button>
+            <a href="/login">Вернуться</a>
+        </form>
+{% endblock %}

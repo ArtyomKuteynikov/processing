@@ -1,0 +1,52 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+  <div id="content-main">
+    <h2>{{ title }}</h2>
+    {% if orders|length %}
+      <form id="changelist-form" method="post" novalidate>{% csrf_token %}
+
+        {# Ваш HTML-код для фильтров #}
+        <div>
+          <!-- Пример фильтра по статусу ордера -->
+          <select name="status" class="select-filter">
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
+        <button type="submit" class="button" name="index" value="1">{% trans 'Filter' %}</button>
+        <button type="submit" class="button" name="index" value="0">{% trans 'Reset' %}</button>
+
+        {% if result_count %}
+          <p class="paginator">
+            <span class="step-links">{% block pagination %}{% pagination %}{% endblock %}</span>
+          </p>
+        {% endif %}
+
+        {# Ваш HTML-код для отображения ордеров #}
+        <table>
+          <thead>
+            <!-- Заголовки таблицы -->
+          </thead>
+          <tbody>
+            {% for order in orders %}
+              <tr class="{% cycle 'row1' 'row2' %}">
+                <!-- Данные ордера -->
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if result_count %}
+          <p class="paginator">
+            <span class="step-links">{% block pagination %}{% pagination %}{% endblock %}</span>
+          </p>
+        {% endif %}
+      </form>
+    {% else %}
+      <p>{% trans '0 orders' %}</p>
+    {% endif %}
+  </div>
+{% endblock %}

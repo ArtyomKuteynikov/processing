@@ -1,0 +1,44 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+        <form method="post" action="{% url 'step3' %}?customer={{ customer }}" id="passwordForm">
+            <h3>Зарегистрироваться</h3>
+            <p>Установка пароля</p>
+            {% csrf_token %}
+
+            <label for="id_password">Задайте пароль:</label>
+            <input type="password" id="id_password" name="password" required>
+
+            <ul id="passwordErrors" class="error" style="padding: 0;text-align: left;"></ul>
+
+            <button type="button" onclick="validatePassword()">Далее</button>
+            <p>Есть аккаунт? <a href="/login">Войти</a></p>
+        </form>
+
+<script>
+        function validatePassword() {
+            var passwordInput = document.getElementById('id_password');
+            var passwordErrors = document.getElementById('passwordErrors');
+            passwordErrors.innerHTML = '';
+
+            var password = passwordInput.value;
+
+            if (password.length < 8) {
+                passwordErrors.innerHTML += '<li class="error">Пароль должен содержать минимум 8 символов.</li>';
+            }
+
+            if (!/[A-Z]/.test(password)) {
+                passwordErrors.innerHTML += '<li class="error">Пароль должен содержать минимум одну заглавную букву.</li>';
+            }
+
+            if (!/\d/.test(password)) {
+                passwordErrors.innerHTML += '<li class="error">Пароль должен содержать минимум одну цифру.</li>';
+            }
+
+            if ((/\d/.test(password)) && (/[A-Z]/.test(password)) && (password.length >= 8)) {
+                document.getElementById('passwordForm').submit();
+            }
+        }
+    </script>
+{% endblock %}

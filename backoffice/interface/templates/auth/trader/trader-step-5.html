@@ -1,0 +1,12 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+        <form method="post" action="{% url 'step1' %}">
+            <h3>Зарегистрироваться</h3>
+            <p>Зарегистрировать аккаунт трейдера</p>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="button is-block is-info is-fullwidth">Отправить</button>
+        </form>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "auth.html" %}
+
+{% block content %}
+<style>
+    .button-send{
+        max-width: 40px
+        }
+</style>
+<form method="post" action="{% url 'reset2' %}?session={{ session }}">
+    {% csrf_token %}
+    <h3>Сбросить пароль</h3>
+    <p>Важно - в течение 24 часовпосле смены паролявы не сможете выводить средства</p>
+    {% if error %}
+    <div class="errorlist">
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <div style="display: flex;justify-content: center;">
+        <div>
+            <label for="email">Email</label>
+            <div style="display: flex;justify-content: center;"><p id="email" class="form-control">{{ email }}</p>
+                <button type="button" class="button button-send" id="emailOTPButton"
+                        onclick="sendEmailOTP('{{ email }}')"><i class="bi bi-send"></i></button>
+            </div>
+        </div>
+        <div style="width: 100px">
+            <label for="email-code">Код</label>
+            <input name="email-code" class="form-control" id="email-code" type="number" minlength="6" maxlength="6">
+        </div>
+    </div>
+
+    <button type="submit" class="button is-block is-info is-fullwidth">Далее</button>
+    <a href="/login">Вернуться</a>
+</form>
+
+
+<!-- Add your body content here -->
+
+<script>
+    // Add your JavaScript functions here
+    function sendOTP(buttonId, endpoint, param) {
+        // Disable the button
+        const button = document.getElementById(buttonId);
+        button.disabled = true;
+
+        // Call the Django view for sending OTP
+        $.ajax({
+            type: "GET",
+            url: "/" + endpoint + "?" + param,  // Замените на свой маршрут для блокировки пользователей
+            success: function (response) {
+                console.log('ok');
+            },
+            error: function () {
+                console.log('error');
+            }
+        });
+
+        // Re-enable the button after 60 seconds
+        setTimeout(() => {
+            button.disabled = false;
+        }, 60000);
+    }
+
+    function sendPhoneOTP(phone) {
+        sendOTP('phoneOTPButton', 'send_phone_otp', 'phone=' + phone);
+    }
+
+    function sendEmailOTP(email) {
+        sendOTP('emailOTPButton', 'send_email_otp', 'email=' + email);
+    }
+
+
+</script>
+{% endblock %}
