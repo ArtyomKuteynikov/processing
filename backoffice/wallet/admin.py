@@ -45,6 +45,8 @@ class WithdrawalAdmin(admin.ModelAdmin):
                 status=1
             )
             transaction.save()
+            transaction.category = f"Вывод средств #{transaction.id}"
+            transaction.save()
         elif obj.status == 'CANCELED':
             transaction = Transaction(
                 sender=obj.customer,

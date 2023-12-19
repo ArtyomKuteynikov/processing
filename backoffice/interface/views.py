@@ -408,7 +408,7 @@ def withdrawals_view(request):
 
 @login_required
 def cards(request):
-    cards = Cards.objects.fil.all(customer=request.user)
+    cards = Cards.objects.filter(customer=request.user).all()
     if request.method == 'POST':
         form = CardsForm(request.POST)
         card = Cards(
@@ -484,8 +484,9 @@ def deposit(request):
             type=0,
             status=0,
             counted=1,
-            category="Пополнение аккаунта"
         )
+        transaction.save()
+        transaction.category = f"Пополнение аккаунта #{transaction.id}"
         transaction.save()
     return redirect('transactions')
 
