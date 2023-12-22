@@ -20,6 +20,7 @@
         <span class="sub-sup-font-size gray-purple">{{ initials }}</span>
         <span class="sub-sup-font-size gray-purple">{{ bank }}</span>
     </div>
+    {% if status == 1 %}
     <button class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
         <img class="mr-2" src="{% static '/icons/check.svg' %}" alt="">
         <span>Я перевел деньги</span>
@@ -30,6 +31,9 @@
             <a class="text-error fw-semibold" style="color:#B42318">Деньги не переводил, отменить</a>
         </div>
     </div>
+    {% else %}
+    {% endif %}
+    <br><p style="color: gray;font-size: 10px">ID: {{ order_id }}</p>
 </form>
 <script>
     function startCountdown(duration, display) {

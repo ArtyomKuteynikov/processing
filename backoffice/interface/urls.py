@@ -34,5 +34,5 @@ urlpatterns = [
     path('withdrawal/', withdrawals, name='withdrawal'),
     path('success/', success, name='success'),
     path('order/start/', order_start, name='order-start'),
-    path('order/pay/', order_pay, name='order-pay')
+    path('order/pay/', order, name='order-pay')
 ]

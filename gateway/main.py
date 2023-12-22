@@ -208,7 +208,8 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     network = result.first()
     if not currency or not network:
         return
-    output_link = session.execute(select(Link).where(Link.currency_id == currency[0].id) & (Link.network_id == network[0].id))
+    output_link = await session.execute(select(Link).where(Link.currency_id == currency[0].id) & (Link.network_id == network[0].id))
+    output_link = output_link.first()
     if data.amount:
         amount = round(data.amount * currency[0].denomination)
         quantity = round((data.amount * course) * currency[0].denomination)
@@ -219,33 +220,14 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
         return
     trader_id = None
     order_id = str(uuid.uuid4())
-    if data.side == 'OUT':
-        payment_methods = await session.execute(
-            select(TraderPaymentMethod).where((TraderPaymentMethod.method_id == input_link[0].method_id)))
-        payment_methods = payment_methods.all()
-        traders = []
-        for i in payment_methods:
-            customer = await get_user_by_id(i[0].customer_id, session)
-            if not customer:
-                continue
-            if customer.status == 'ACTIVE':
-                traders.append((i[0].customer_id, i[0].id, customer))
-        if not traders:
-            return
-        trader = random.choice(traders)
-        if trader:
-            trader_id = trader[0]
-        trader = await get_user_by_id(trader_id, session)
-        await out_order(order_id, amount, currency[0].ticker, trader.telegram_id, data.payment_detail, data.initials)
     new_order = Order(
         sender_id=user_id,
-        input_link_id=input_link[0].id,
         output_link_id=output_link[0].id,
         order_site_id=data.website,
         input_amount=amount,
         output_amount=quantity,
         comment=data.comment,
-        status=0 if data.side == 'IN' else 1,
+        status=0,
         uuid=order_id,
         created=datetime.datetime.now(),
         side=data.side,

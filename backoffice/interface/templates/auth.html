@@ -99,10 +99,9 @@
 
 <body>
 <div style="position: fixed; top: 10px; left: 10px;"><h5 style="color:#026AA2"><img style="height: 23px" src="{% static "logo.png" %}">Процессинг</h5></div>
-<div class="column is-3">
+<div class="{% if order_id %} column is-4 {% else %} column is-3 {% endif %}">
 
     <div style="text-align: center;z-index: 1">
-
         {% block content %}
         {% endblock %}
     </div>

@@ -392,25 +392,51 @@ def orders_view(request):
 
 
 def order_start(request):
+    order_id = uuid.uuid4()
     if request.method == 'POST':
         return redirect('order-pay')
     methods = PaymentMethods.objects.all()
     amount = 100
     form = ChoseMethodForm()
-    return render(request, 'payment/popup-start.html', {'methods': methods, 'amount': amount, 'form': form})
+    return render(request, 'payment/popup-start.html', {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id})
 
 
 def order(request):
-    amount = 100
-    time_limit = 600
-    card_number = '1234 5678 9876 1024'
-    initials = 'Иванов Иван И.'
-    bank = 'Тинькофф'
-    minutes = time_limit // 60
-    seconds = time_limit % 60
-    return render(request, 'payment/popup-pay.html', {'amount': amount, 'time': time_limit,
-                                                      'card_number': card_number, 'initials': initials, 'bank': bank,
-                                                      'minutes': minutes, 'seconds': seconds})
+    try:
+        order_id = uuid.uuid4()
+        if True:
+            return render(request, 'payment/order-not-found.html')
+        side = 'IN'
+        status = 1
+        amount = 100
+        time_limit = 600
+        card_number = '1234 5678 9876 1024'
+        initials = 'Иванов Иван И.'
+        bank = 'Тинькофф'
+        minutes = time_limit // 60
+        seconds = time_limit % 60
+        if status == 0:
+            return redirect('order-start')
+        if status in [1, 2] and side == "IN":
+            return render(request, 'payment/popup-pay.html', {'amount': amount, 'time': time_limit,
+                                                              'card_number': card_number, 'initials': initials,
+                                                              'bank': bank, 'status': status, 'order_id': order_id,
+                                                              'minutes': minutes, 'seconds': seconds})
+        if status == 1:
+            return render(request, 'payment/popup-wait.html', {'amount': amount, 'time': time_limit,
+                                                              'minutes': minutes, 'seconds': seconds, 'order_id': order_id})
+        if status == 2:
+            return render(request, 'payment/order-confirm.html', {'amount': amount, 'time': time_limit,
+                                                              'minutes': minutes, 'seconds': seconds, 'order_id': order_id})
+        if status in [3, 11]:
+            return render(request, 'payment/order-success.html')
+        if status in [4, 5, 6, 7, 8, 9, 10, 12]:
+            error_text = 'Ордер отменен'
+            return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
+    except Exception as e:
+        error_text = str(e)
+        return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
+
 
 
 @login_required

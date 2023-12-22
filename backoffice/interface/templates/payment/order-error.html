@@ -1,10 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "auth.html" %}
 
-</body>
-</html>
+{% block content %}
+{% load static %}
+<form>
+    <h2 class="h2 fw-semibold black mb-3-5">Оплата</h2>
+    <div class="d-flex justify-content-center">
+        <div class="d-flex justify-content-center m-3">
+            <img class="mr-2" src="{% static '/icons/close-red.svg' %}" alt="">
+            <span class="text-error fw-semibold" style="color:#B42318">{{ error_text }}</span>
+        </div>
+    </div>
+    <p>Свяжитесь с технической поддержкой если считаете что произошла ошибка <a href="mailto:support@example.com">support@example.com</a></p>
+    <br><p style="color: gray;font-size: 10px">ID: {{ order_id }}</p>
+</form>
+<script>
+    function startCountdown(duration, display) {
+        let timer = duration, minutes, seconds;
+        setInterval(function () {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.textContent = minutes + ":" + seconds;
+
+            if (--timer < 0) {
+                timer = duration;
+            }
+        }, 1000);
+    }
+
+    // Устанавливаем время на оплату (в секундах)
+    const countdownMinutes = {{ time }};
+    const countdownDisplay = document.getElementById('countdown');
+    startCountdown(countdownMinutes, countdownDisplay);
+
+</script>
+
+{% endblock %}
