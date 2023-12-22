@@ -191,33 +191,6 @@ class TraderPaymentMethod(Base):
     initials = Column(String(256))
 
 
-class Cards(Model):
-    id = fields.IntField(pk=True)
-    name = fields.CharField(max_length=256)
-    method = fields.ForeignKeyField("models.PaymentMethods", related_name="cards")
-    currency = fields.ForeignKeyField("models.Currency", related_name="cards")
-    customer = fields.ForeignKeyField("models.Traders", related_name="cards")
-    payment_details = fields.CharField(max_length=256)
-    initials = fields.CharField(max_length=256)
-    status = fields.BooleanField()
-
-    class Meta:
-        table = "customer_cards"
-        verbose_name = "Card"
-        verbose_name_plural = "Cards"
-
-# Модель лимитов карты
-class CardsLimits(Model):
-    id = fields.IntField(pk=True)
-    card = fields.OneToOneField("models.Cards", related_name="limits")
-    input_operation_limit = fields.IntField()
-    input_day_limit = fields.IntField()
-    input_month_limit = fields.IntField()
-    output_operation_limit = fields.IntField()
-    output_day_limit = fields.IntField()
-    output_month_limit = fields.IntField()
-
-
 class Balance(Base):
     __tablename__ = "wallet_balance"
     id = Column(Integer, primary_key=True, index=True)

@@ -48,10 +48,27 @@
         }, 1000);
     }
 
-    // Устанавливаем время на оплату (в секундах)
     const countdownMinutes = {{ time }};
     const countdownDisplay = document.getElementById('countdown');
     startCountdown(countdownMinutes, countdownDisplay);
+
+    function checkOrderStatus(orderId) {
+            fetch('/order/status/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status != {{ status }}) {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        const orderId = '{{ order }}';
+        setInterval(() => {
+            checkOrderStatus(orderId);
+        }, 5000);
 
 </script>
 

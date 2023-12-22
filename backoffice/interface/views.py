@@ -1,4 +1,5 @@
 import datetime
+import time
 import uuid
 from functools import wraps
 
@@ -391,32 +392,61 @@ def orders_view(request):
                   {'orders': orders, 'balances': balances, 'address': address, 'max_amount': max_amount, 'form': form})
 
 
-def order_start(request):
-    order_id = uuid.uuid4()
+def order_start(request, order_id):
+    order = Order.objects.get(uuid=order_id)
+    if not order:
+        return render(request, 'payment/order-not-found.html')
+    if order.status != 0:
+        return redirect('order-pay', order_id=order_id)
     if request.method == 'POST':
-        return redirect('order-pay')
+        form = ChoseMethodForm(request.POST)
+        method = form.data['method']
+        input_link = Links.objects.filter(currency=Currency.objects.get(ticker='RUB'), method_id=method).first()
+        order.input_link = input_link
+        direction = ExchangeDirection.objects.filter(input=order.output_link, output=input_link).first()
+        if order.side == 'IN':
+            traders = TraderExchangeDirections.objects.filter(direction=direction, input=True).all()
+        else:
+            traders = TraderExchangeDirections.objects.filter(direction=direction, output=True).all()
+        print(traders[0].trader.verification_status())
+        traders = [i for i in traders if i.trader.verification_status().lower() == 'verified']
+        print(traders)
+        if not traders:
+            order.status = 4
+            order.save()
+            return redirect('order-pay', order_id=order_id)
+        trader = random.choice(traders)
+        order.trader = trader.trader
+        card = Cards.objects.filter(customer=trader.trader).all().order_by('last_used')[0]
+        order.method = card
+        order.status = 1
+        order.save()
+        # TODO: notify trader
+        return redirect('order-pay', order_id=order_id)
     methods = PaymentMethods.objects.all()
     amount = 100
     form = ChoseMethodForm()
-    return render(request, 'payment/popup-start.html', {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id})
+    return render(request, 'payment/popup-start.html',
+                  {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id})
 
 
-def order(request):
+def order_view(request, order_id):
     try:
-        order_id = uuid.uuid4()
-        if True:
+        order = Order.objects.get(uuid=order_id)
+        if not order:
             return render(request, 'payment/order-not-found.html')
-        side = 'IN'
-        status = 1
-        amount = 100
-        time_limit = 600
-        card_number = '1234 5678 9876 1024'
-        initials = 'Иванов Иван И.'
-        bank = 'Тинькофф'
+        if order.status == 0:
+            return redirect('order-start', order_id=order_id)
+        TIME_LIMIT = Settings.objects.first().order_life
+        side = order.side
+        status = order.status
+        amount = order.input_amount / order.input_link.currency.denomination
+        time_limit = TIME_LIMIT - (int(time.time()) - int(order.created.timestamp()))
+        card_number = order.method.payment_details
+        initials = order.method.initials
+        bank = order.method.method.name
         minutes = time_limit // 60
         seconds = time_limit % 60
-        if status == 0:
-            return redirect('order-start')
         if status in [1, 2] and side == "IN":
             return render(request, 'payment/popup-pay.html', {'amount': amount, 'time': time_limit,
                                                               'card_number': card_number, 'initials': initials,
@@ -424,10 +454,12 @@ def order(request):
                                                               'minutes': minutes, 'seconds': seconds})
         if status == 1:
             return render(request, 'payment/popup-wait.html', {'amount': amount, 'time': time_limit,
-                                                              'minutes': minutes, 'seconds': seconds, 'order_id': order_id})
+                                                               'minutes': minutes, 'seconds': seconds,
+                                                               'order_id': order_id, 'status': status})
         if status == 2:
             return render(request, 'payment/order-confirm.html', {'amount': amount, 'time': time_limit,
-                                                              'minutes': minutes, 'seconds': seconds, 'order_id': order_id})
+                                                                  'minutes': minutes, 'seconds': seconds,
+                                                                  'order_id': order_id, 'status': status})
         if status in [3, 11]:
             return render(request, 'payment/order-success.html')
         if status in [4, 5, 6, 7, 8, 9, 10, 12]:
@@ -436,6 +468,13 @@ def order(request):
     except Exception as e:
         error_text = str(e)
         return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
+
+
+def order_status(request, order_id):
+    order = Order.objects.get(uuid=order_id)
+    if not order:
+        return JsonResponse({'status': -1})
+    return JsonResponse({'status': order.status})
 
 
 

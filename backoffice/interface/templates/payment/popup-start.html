@@ -4,7 +4,7 @@
 
 <div class="content-inner position-relative mb-5">
     <div class="p-6">
-        <form method="post" action="{% url 'order-start' %}">
+        <form method="post" action="{% url 'order-start' order_id=order_id %}">
         <h2 class="h2 fw-semibold black mb-3-5">Оплата</h2>
         <p class="gray-purple">Выберите способ оплаты:</p>
         <div class="d-flex justify-content-center align-items-end bg-light-gray rounded-4 p-3 mb-4-5 mt-4">

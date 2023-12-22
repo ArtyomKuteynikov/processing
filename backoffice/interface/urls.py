@@ -33,6 +33,7 @@ urlpatterns = [
     path('deposit/', deposit, name='deposit'),
     path('withdrawal/', withdrawals, name='withdrawal'),
     path('success/', success, name='success'),
-    path('order/start/', order_start, name='order-start'),
-    path('order/pay/', order, name='order-pay')
+    path('order/start/<str:order_id>/', order_start, name='order-start'),
+    path('order/pay/<str:order_id>/', order_view, name='order-pay'),
+    path('order/status/<str:order_id>/', order_status, name='order-status')
 ]

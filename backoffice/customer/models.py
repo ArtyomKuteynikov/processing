@@ -242,6 +242,7 @@ class Cards(models.Model):
     payment_details = models.CharField(max_length=256, verbose_name='Номер карты')
     initials = models.CharField(max_length=256, verbose_name='Инициалы владельца карты')
     status = models.BooleanField(verbose_name='Карта активна')
+    last_used = models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0))
 
     def limits(self):
         return self.cardslimits
