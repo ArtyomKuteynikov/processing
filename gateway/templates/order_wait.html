@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Платеж на карту</title>
+    <link rel="icon" type="image/x-icon"
+          href="https://support.appsflyer.com/hc/article_attachments/360002466669/InApp_Events_lending.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #192a56, #273c75, #192a56);
+            color: #fff;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #34495e;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+        }
+
+        .logo {
+            width: 50px;
+        }
+
+        .payment-details {
+            padding: 20px;
+        }
+
+        .info-box {
+            display: flex;
+            justify-content: space-between;
+            background-color: #2c3e50;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .info-box-1 {
+            background-color: #2c3e50;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .copy-button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .form-control {
+            display: block;
+            width: 100%;
+            height: calc(1.5em + 0.75rem + 2px);
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #fff;
+            background-color: #4f5f6f;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo-container">
+        <img src="https://support.appsflyer.com/hc/article_attachments/360002466669/InApp_Events_lending.png" alt="Visa Logo" WIDTH="350">
+    </div>
+
+    <div class="payment-details">
+        <div class="info-box">
+            <p>Сумма платежа: {{ amount }} {{ currency }}</p>
+            <p>Время на оплату: <span id="countdown">{{ time//60 }}:{{time%60}}</span></p>
+        </div>
+        <p class="info-box" style="background-color: #6c9e60;">Трейдер для выполения транзакции выбран, ожидайте получения средств</p>
+
+    </div>
+</div>
+
+<script>
+    // Функция для копирования текста в буфер обмена
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.innerText;
+
+        navigator.clipboard.writeText(text).then(function () {
+            console.log('Текст скопирован: ' + text);
+        }).catch(function (err) {
+            console.error('Не удалось скопировать текст: ', err);
+        });
+    }
+
+    // Функция для отсчета времени
+    function startCountdown(duration, display) {
+        let timer = duration, minutes, seconds;
+        setInterval(function () {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.textContent = minutes + ":" + seconds;
+
+            if (--timer < 0) {
+                timer = duration;
+            }
+        }, 1000);
+    }
+
+    // Устанавливаем время на оплату (в секундах)
+    const countdownMinutes = {{ time }};
+    const countdownDisplay = document.getElementById('countdown');
+    startCountdown(countdownMinutes, countdownDisplay);
+
+        function checkOrderStatus(orderId) {
+            // Отправка запроса на сервер
+            fetch('/v1/order-status/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                    // Проверка статуса заказа
+                    if (data.status != {{ status }}) {
+                        // Если статус 'Success', перезагрузить страницу
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        // Запуск проверки статуса заказа каждые 10 секунд
+        const orderId = '{{ order }}'; // Замените на реальный идентификатор заказа
+        setInterval(() => {
+            checkOrderStatus(orderId);
+        }, 5000);
+</script>
+
+</body>
+</html>
