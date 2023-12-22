@@ -1,7 +1,7 @@
 import modeltranslation.thread_context
 import uuid
 from django.db import models
-from customer.models import Customer, Websites, TraderPaymentMethod
+from customer.models import Customer, Websites, Cards
 from currency.models import Links
 from currency.models import Currency, PaymentMethods
 
@@ -101,11 +101,8 @@ class Order(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     uuid = models.CharField(max_length=128)
-    method = models.ForeignKey(TraderPaymentMethod, on_delete=models.CASCADE, null=True, blank=True)
+    method = models.ForeignKey(Cards, on_delete=models.CASCADE, null=True, blank=True)
     side = models.CharField(max_length=4, choices=ORDER_SIDES)
-    payment_method = models.ForeignKey(PaymentMethods, on_delete=models.CASCADE, null=True, blank=True)
-    payment_details = models.CharField(max_length=256, null=True, blank=True)
-    initials = models.CharField(max_length=256, null=True, blank=True)
     client_id = models.IntegerField()
     external_id = models.IntegerField()
 

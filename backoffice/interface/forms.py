@@ -1,13 +1,13 @@
 from django import forms
 from django_recaptcha.fields import ReCaptchaField
-from currency.models import Links
+from currency.models import Links, PaymentMethods
 from customer.models import Cards, CardsLimits
 
 
 class CardsForm(forms.ModelForm):
     class Meta:
         model = Cards
-        fields = ['name', 'method', 'currency', 'payment_details', 'initials', 'status']
+        fields = ['name', 'method', 'payment_details', 'initials', 'status']
 
 
 class LimitsForm(forms.ModelForm):
@@ -85,3 +85,8 @@ class WithdrawalForm(forms.Form):
     link = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Валюта', choices=LINKS)
     address = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Адрес'}), label='Адрес')
     comment = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Комментарий'}), label='Комментарий', required=False)
+
+
+class ChoseMethodForm(forms.Form):
+    METHODS = [(i.id, i.name) for i in PaymentMethods.objects.all()]
+    method = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Банк', choices=METHODS)

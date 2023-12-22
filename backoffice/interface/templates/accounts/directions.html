@@ -23,7 +23,7 @@
                 <tr>
                     <td><b>{{ i }}</b></td>
                     {% for j in crypto %}
-                    <td><input class="form-check-input" type="checkbox" {% dict_get inputs i j %}></td>
+                    <td><input class="form-check-input" type="checkbox" {% dict_get inputs i j %} data-side="IN" data-input="{{ j }}" data-output="{{ i }}"></td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
@@ -48,7 +48,7 @@
                 <tr>
                     <td><b>{{ i }}</b></td>
                     {% for j in crypto %}
-                    <td><input class="form-check-input" type="checkbox" {% dict_get outputs i j %}></td>
+                    <td><input class="form-check-input" type="checkbox" {% dict_get outputs i j %} data-side="OUT" data-input="{{ j }}" data-output="{{ i }}"></td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
@@ -58,5 +58,35 @@
         </div>
     </div>
 </div>
+
+<script>
+    $(document).ready(function () {
+        $('input[type="checkbox"]').on('change', function () {
+            var side = $(this).data('side');
+            var input = $(this).data('input');
+            var output = $(this).data('output');
+            var isChecked = $(this).prop('checked');
+
+            // Отправка запроса на сервер с использованием AJAX
+            $.ajax({
+                url: '{% url "update_direction" %}',  // Укажите URL-адрес вашего обработчика
+                method: 'POST',
+                data: {
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                    'side': side,
+                    'input': input,
+                    'output': output,
+                    'isChecked': isChecked
+                },
+                success: function (response) {
+                    console.log(response);  // Обработка успешного ответа от сервера
+                },
+                error: function (error) {
+                    console.error(error);  // Обработка ошибки
+                }
+            });
+        });
+    });
+</script>
 
 {% endblock %}

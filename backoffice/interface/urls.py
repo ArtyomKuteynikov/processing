@@ -8,6 +8,7 @@ urlpatterns = [
     path('withdrawals/', withdrawals_view, name='withdrawals'),
     path('cards/', cards, name='cards'),
     path('card/<int:card_id>/', card, name='card'),
+    path('update-direction/', update_direction, name='update_direction'),
     path('directions/', payment_methods, name='directions'),
     path('settings/', settings, name='settings'),
     path('support/', support, name='support'),
@@ -32,4 +33,6 @@ urlpatterns = [
     path('deposit/', deposit, name='deposit'),
     path('withdrawal/', withdrawals, name='withdrawal'),
     path('success/', success, name='success'),
+    path('order/start/', order_start, name='order-start'),
+    path('order/pay/', order_pay, name='order-pay')
 ]

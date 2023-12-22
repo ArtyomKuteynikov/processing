@@ -1,36 +1,80 @@
 {% extends "finances.html" %}
 
 {% block table %}
+{% load static %}
+<style>
+    .status-0, .status-1 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge.png' %}');
+        background-size: cover;
+    }
+
+    .status-2 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (1).png' %}');
+        background-size: cover;
+    }
+
+    .status-3, .status-12 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (2).png' %}');
+        background-size: cover;
+    }
+
+    .status-4, .status-5, .status-6, .status-7, .status-8, .status-9, .status-11 {
+        display: inline-block;
+        width: 45px;
+        height: 27px;
+        background-image: url('{% static '/icons/Badge (3).png' %}');
+        background-size: cover;
+    }
+
+    .status-10 {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        background-image: url('{% static '/icons/Avatar.png' %}');
+        background-size: cover;
+    }
+</style>
 <table class="table">
     <thead>
     <tr>
         <th scope="col">ID</th>
         <th scope="col">Дата и время</th>
-        <th scope="col">Сайт</th>
-        <th scope="col">Входящее</th>
-        <th scope="col">Валюта</th>
-        <th scope="col">Исходящее</th>
+        <th scope="col">Тип ордера</th>
+        <th scope="col">Входящая сумма</th>
+        <th scope="col">Банк</th>
+        <th scope="col">Карта</th>
+        <th scope="col">От кого</th>
+        <th scope="col">Исходящая сумма</th>
         <th scope="col">Валюта</th>
         <th scope="col">Статус</th>
-        <th scope="col">Тип транзакции</th>
-        <th scope="col">ID клиента</th>
-        <th scope="col">ID внешнего ордера</th>
+        <th scope="col">Оставшееся время/действия</th>
     </tr>
     </thead>
     <tbody>
+    {% load custom_tags %}
     {% for i in orders %}
     <tr>
         <td>{{ i.id }}</td>
         <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
-        <td>{{ i.order_site.domain }}</td>
-        <td>${{ i.input_link }}</td>
-        <td>{{ i.input_amount }}</td>
-        <td>${{ i.output_link }}</td>
-        <td>{{ i.output_amount }}</td>
-        <td>{{ i.status }}</td>
-        <td>{{ i.side }}</td>
-        <td>{{ i.client_id }}</td>
-        <td>{{ i.external_id }}</td>
+        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span></td>
+        <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        <td>{{ i.input_link.method.name }}</td>
+        <td>{{ i.method.name }}</td>
+        <td>{{ i.sender }}</td>
+        <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
+        <td>{{ i.output_link }}</td>
+        <td><i class="status-{{ i.status }}"></i></td>
+        <td></td>
+        <td></td>
     </tr>
     {% endfor %}
     </tbody>

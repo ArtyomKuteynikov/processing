@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css" />
+  <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+  <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
+  <link rel="icon" href="{% static " logo.png" %}">
+  <!-- Google Fonts -->
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link
+    href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="css/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="css/vendor/quill/quill.snow.css" rel="stylesheet">
+  <link href="css/vendor/quill/quill.bubble.css" rel="stylesheet">
+  <link href="css/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="css/vendor/simple-datatables/style.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js">
+  </script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js">
+  </script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css">
+  <link href="https://cdn.jsdelivr.net/npm/suggestions-jquery@21.12.0/dist/css/suggestions.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css" />
+  <link rel="stylesheet" href="css/style.min.css">
+  <style>
+    body {
+      background-color: #F9FAFB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    form {
+      min-width: fit-content;
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #cccccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .p-6 {
+      padding: 4rem;
+    }
+
+    .mb-3-5 {
+      margin-bottom: 0.75rem;
+    }
+
+    .mb-4-5 {
+      margin-bottom: 2rem;
+    }
+
+    .sub-sup-font-size {
+      font-size: 0.875rem;
+    }
+
+    .g-recaptcha {
+      margin: 15px auto !important;
+      width: auto !important;
+      height: auto !important;
+      text-align: -webkit-center;
+      text-align: -moz-center;
+      text-align: -o-center;
+      text-align: -ms-center;
+    }
+
+    .gray {
+      color: #344054;
+    }
+
+    .gray-purple {
+      color: #667085;
+    }
+
+    .bg-light-gray {
+      background-color: #F9FAFB;
+    }
+
+    .bg-blue-light {
+      background-color: #0086C9;
+    }
+
+    .black {
+      color: #101828;
+    }
+
+    .errorlist {
+      padding: 0;
+      background: #ff555555;
+      border-radius: 20px;
+    }
+
+    .error input,
+    .error select {
+      border: 2px red solid;
+    }
+
+    .content-inner {
+      max-width: 488px;
+      width: 100%;
+      border-radius: 22px;
+      background-color: #fff;
+      box-shadow: 0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08);
+    }
+
+    .border-none {
+      border: none;
+    }
+
+    .payments-buttons {
+      box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+    }
+
+    .payments-buttons{
+      border-right: none;
+    }
+
+    .payments-buttons .btn{
+      border-radius: .5rem;
+    }
+
+    .cursor-pointer{
+      cursor: pointer;
+    }
+
+    /* .btn-group>.btn-group:not(:first-child)>.btn, .btn-group>.btn:not(:first-child){
+      border-top-left-radius: .5rem;
+      border-bottom-left-radius: .5rem;
+    }
+    .payments-buttons .btn-group>.btn-group:not(:last-child)>.btn, .btn-group>.btn:not(:last-child){
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    } */
+  </style>
+</head>
+
+<body>
+
+  <div style="position: fixed; top: 10px; left: 10px;">
+    <h5 style="color:#026AA2"><img style="height: 23px" src="images/logo.png">Процессинг</h5>
+  </div>
+  <div class="content-inner position-relative mb-5">
+    <div class="position-absolute top-0 end-0 d-flex p-3 cursor-pointer">
+      <img src="images/close.svg" alt="">
+    </div>
+    <div class="p-6">
+      <h2 class="h2 fw-semibold black mb-3-5">Поиск трейдера</h2>
+      <div class="d-flex justify-content-center align-items-end bg-light-gray rounded-4 p-3 mb-2 mt-4">
+        <span class="h2 fw-semibold black m-0 mr-1">40.00</span>
+        <span class="pb-1 sub-sup-font-size gray-purple">USDT_TRC20</span>
+      </div>
+      <div class="d-flex justify-content-center align-items-end bg-light-gray rounded-4 p-3 mb-4-5">
+        <span class="h2 fw-semibold gray-purple m-0 mr-1">01 Способ оплаты</span>
+      </div>
+      <button class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none m-0">
+        <img class="mr-2" src="images/loading.svg" alt="">
+        <span>Найти трейдера</span>
+      </button>
+    </div>
+  </div>
+  <div style="position: fixed; bottom: 10px; left: 10px;">
+    <p>©processing 2023</p>
+  </div>
+
+  <script src="js/main.min.js"></script>
+</body>
+
+</html>

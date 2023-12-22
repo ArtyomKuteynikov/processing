@@ -1,0 +1,22 @@
+{% extends "auth.html" %}
+
+{% block content %}
+
+<div class="content-inner position-relative mb-5">
+    <div class="p-6">
+        <form method="post" action="{% url 'order-start' %}">
+        <h2 class="h2 fw-semibold black mb-3-5">Оплата</h2>
+        <p class="gray-purple">Выберите способ оплаты:</p>
+        <div class="d-flex justify-content-center align-items-end bg-light-gray rounded-4 p-3 mb-4-5 mt-4">
+            <span class="h2 fw-semibold black m-0 mr-1">{{ amount }}</span>
+            <span class="pb-1 sub-sup-font-size gray-purple">RUB</span>
+        </div>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none m-0">
+                <span>К оплате</span>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -7,12 +7,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 import pyotp
 from .forms import Step1Form, LoginForm, OTPForm, Reset1Form, Reset2Form, RequestForm, MerchantForm, SupportForm, \
-    SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm
-from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards,  CardsLimits
+    SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm
+from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits
 from order.models import Transaction, Order
 from wallet.models import Balance, Withdrawal
 from support.models import Ticket, FAQ, TicketMessage
-from currency.models import Links, ExchangeDirection
+from currency.models import Links, ExchangeDirection, PaymentMethods
 import random
 import redis
 import qrcode
@@ -378,6 +378,7 @@ def transactions_view(request):
 
 @login_required
 def orders_view(request):
+    TIME_LIMIT = Settings.objects.first().order_life
     balances = Balance.objects.filter(account=request.user).all()
     orders = Order.objects.filter(Q(sender=request.user) | Q(trader=request.user)).all()
     address = DEPOSIT_ADDRESS
@@ -388,6 +389,28 @@ def orders_view(request):
     form = WithdrawalForm()
     return render(request, 'accounts/orders.html',
                   {'orders': orders, 'balances': balances, 'address': address, 'max_amount': max_amount, 'form': form})
+
+
+def order_start(request):
+    if request.method == 'POST':
+        return redirect('order-pay')
+    methods = PaymentMethods.objects.all()
+    amount = 100
+    form = ChoseMethodForm()
+    return render(request, 'payment/popup-start.html', {'methods': methods, 'amount': amount, 'form': form})
+
+
+def order(request):
+    amount = 100
+    time_limit = 600
+    card_number = '1234 5678 9876 1024'
+    initials = 'Иванов Иван И.'
+    bank = 'Тинькофф'
+    minutes = time_limit // 60
+    seconds = time_limit % 60
+    return render(request, 'payment/popup-pay.html', {'amount': amount, 'time': time_limit,
+                                                      'card_number': card_number, 'initials': initials, 'bank': bank,
+                                                      'minutes': minutes, 'seconds': seconds})
 
 
 @login_required
@@ -414,7 +437,7 @@ def cards(request):
         card = Cards(
             name=form.data['name'],
             method_id=form.data['method'],
-            currency_id=form.data['currency'],
+            currency=Currency.objects.filter(ticker="RUB").first(),
             customer=request.user.customer,
             payment_details=form.data['payment_details'],
             initials=form.data['initials'],
@@ -511,8 +534,10 @@ def withdrawals(request):
 @login_required
 def payment_methods(request):
     payment_methods = ExchangeDirection.objects.all()
-    crypto = [i.input.__str__ for i in payment_methods]
-    fiat = [i.output.__str__ for i in payment_methods]
+    links = set([Links.objects.filter(method=i.method, currency=i.currency).first() for i in
+                 Cards.objects.filter(customer=request.user.customer).all()])
+    crypto = list(set([i.input.__str__() for i in payment_methods]))
+    fiat = [i.__str__() for i in links]
     inputs = dict()
     outputs = dict()
     for i in [i.output for i in payment_methods]:
@@ -521,6 +546,10 @@ def payment_methods(request):
         for j in [i.input for i in payment_methods]:
             direction = ExchangeDirection.objects.filter(input=j, output=i).first()
             directions = TraderExchangeDirections.objects.filter(trader=request.user, direction=direction).first()
+            if not direction:
+                temp_in.update({j.__str__(): 'disabled'})
+                temp_out.update({j.__str__(): 'disabled'})
+                continue
             if not directions:
                 temp_in.update({j.__str__(): ''})
                 temp_out.update({j.__str__(): ''})
@@ -539,8 +568,39 @@ def payment_methods(request):
                   {'crypto': crypto, 'fiat': fiat, 'inputs': inputs, 'outputs': outputs})
 
 
-# @login_required
-# def edit_direction(request):
+@login_required
+def update_direction(request):
+    if request.method == 'POST':
+        side = request.POST.get('side')
+        input_name = request.POST.get('input')
+        output_name = request.POST.get('output')
+        is_checked = True if str(request.POST.get('isChecked')) == "true" else False
+        print(bool(is_checked))
+        currency = Currency.objects.filter(ticker=input_name.split('_')[0]).first()
+        network = Networks.objects.filter(short_name=input_name.split('_')[1]).first()
+        method = PaymentMethods.objects.filter(short_name=input_name.split('_')[1]).first()
+        input_link = Links.objects.filter(currency=currency,
+                                          network=network).first() if network else Links.objects.filter(
+            currency=currency, method=method).first()
+        currency = Currency.objects.filter(ticker=output_name.split('_')[0]).first()
+        network = Networks.objects.filter(short_name=output_name.split('_')[1]).first()
+        method = PaymentMethods.objects.filter(short_name=output_name.split('_')[1]).first()
+        output_link = Links.objects.filter(
+            Q(currency=currency) & Q(network=network)).first() if network else Links.objects.filter(
+            Q(currency=currency) & Q(method=method)).first()
+        exchange_direction = ExchangeDirection.objects.get(input=input_link, output=output_link)
+        direction, created = TraderExchangeDirections.objects.get_or_create(
+            trader=request.user.customer,
+            direction=exchange_direction,
+            defaults={'input': False, 'output': False}
+        )
+        if side == "IN":
+            direction.input = bool(is_checked)
+        elif side == "OUT":
+            direction.output = bool(is_checked)
+        direction.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'})
 
 
 @login_required
