@@ -267,7 +267,7 @@
                         <li>
                             <p class="dropdown-item d-flex align-items-center">
                                 <i class="bi bi-person-check"></i>
-                                {% if user.customer.verification_status == "Not started" %}
+                                {% if user.customer.verification_status == "Not started" or user.customer.verification_status == "Verification rejected" %}
                                 <a href="/kyc"><span>{{ user.customer.verification_status }}</span></a>
                                 {% else %}
                                 <span>{{ user.customer.verification_status }}</span>

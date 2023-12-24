@@ -38,7 +38,7 @@ class TicketMessage(models.Model):
     author = models.IntegerField(choices=[(0, 'Client'), (1, 'Support')])
     message = models.CharField(max_length=1024)
     read = models.BooleanField()
-    attachment = models.FileField(verbose_name='message_attachment', upload_to='media', blank=True, null=True)
+    attachment = models.FileField(verbose_name='message_attachment', upload_to='support', blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

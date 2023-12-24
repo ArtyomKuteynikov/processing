@@ -237,7 +237,11 @@ def login_view(request):
             if pwd_context.verify(password, user.password):
                 key = str(uuid.uuid4())
                 cache.set(f"otp:{key}", email, timeout=600)
-                return redirect(reverse('2fa') + f'?session={key}')
+                if user.customer.method_2fa == 2:
+                    return redirect(reverse('2fa') + f'?session={key}')
+                else:
+                    login(request, Customer.objects.get(id=user.id))
+                    return HttpResponseRedirect(reverse('index'))
             cache.set(f"retries:login:{email}", retries + 1, timeout=600)
             if retries >= 2:
                 form.add_error(None, "Неверный логин или пароль, попробуйте заново через 10 минут")
@@ -365,18 +369,18 @@ def kyc(request):
     if verification:
         form = KYCForm(instance=verification)
     if request.method == 'POST':
-        """if verification:
+        if verification:
             form = KYCForm(request.POST, request.FILES, instance=verification)
-        else:"""
-        form = KYCForm(request.POST, request.FILES)
-        if form.is_valid():
+        else:
+            form = KYCForm(request.POST, request.FILES)
+        """if form.is_valid():
             for file in request.FILES:
-                print(file)
-            # handle_uploaded_file(request.FILES['file'])
-            return redirect('index')
+                handle_uploaded_file(request.FILES[file])"""
         verification = form.save(commit=False)
         verification.customer = request.user.customer
+        verification.status = 'request'
         verification.save()
+        return redirect('index')
     return render(request, 'auth/trader/kyc.html', {'form': form, 'kyc': True})
 
 
@@ -968,7 +972,7 @@ def support(request):
             message=form.data['comment'],
             author=0,
             ticket=new_ticket,
-            attachment=form.data['file'],
+            attachment=form.data['attachment'],
             read=0
         )
         message.save()
@@ -1014,7 +1018,7 @@ def ticket(request, ticket_id):
             message=form.data['message'],
             author=0,
             ticket_id=ticket_id,
-            attachment=form.data['file'],
+            attachment=request.FILES['file'],
             read=0
         )
         message.save()
