@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from django.db import models
 from django.db.models import Sum, F
@@ -119,6 +120,7 @@ class Customer(User):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     interest_rate = models.FloatField(null=True, blank=True)
+    personal_course = models.FloatField(null=True, blank=True, verbose_name="Individual course")
 
     def verification_status(self):
         return self.customerdocument_set.first().get_status_display() if self.customerdocument_set.first() else 'Not started'
@@ -135,6 +137,12 @@ class Customer(User):
         ).get('total_balance', 0)
         return total_balance or 0
 
+    def notifications(self):
+        return self.notifications_set.filter(read=False).all()
+
+    def unread_notifications(self):
+        return len(self.notifications_set.filter(read=False).all())
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -150,14 +158,14 @@ class Customer(User):
 
 class CustomerDocument(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    status = models.CharField(max_length=100, choices=VERIFICATION_STATUSES)
-    passport_number = models.CharField(max_length=100)
-    authority = models.CharField(max_length=100)
-    date_of_issue = models.DateField()
-    date_of_birth = models.DateField()
-    passport_scan_1 = models.FileField(upload_to='documents', blank=True)
-    passport_scan_2 = models.FileField(upload_to='documents', blank=True)
-    passport_video = models.FileField(upload_to='videos', blank=True)
+    status = models.CharField(max_length=100, choices=VERIFICATION_STATUSES, default='request')
+    passport_number = models.CharField(max_length=100, verbose_name='Номер паспорта')
+    authority = models.CharField(max_length=100, verbose_name="Кем выдан")
+    date_of_issue = models.DateField(verbose_name="Дата выдачи")
+    date_of_birth = models.DateField(verbose_name="Дата рождения")
+    passport_scan_1 = models.FileField(upload_to='documents', blank=True, verbose_name="Фото первой страницы паспорта")
+    passport_scan_2 = models.FileField(upload_to='documents', blank=True, verbose_name="Фото страницы с пропиской")
+    passport_video = models.FileField(upload_to='videos', blank=True, verbose_name="Видео")
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -209,6 +217,7 @@ class Websites(models.Model):
     verified = models.IntegerField(choices=WEBSITES_VERIFICATION)
     verification_code = models.CharField(max_length=64)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
+    key = models.CharField(max_length=128, auto_created=uuid.uuid4, default=uuid.uuid4)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -310,3 +319,17 @@ class Settings(models.Model):
 
     def __str__(self):
         return 'Processing settings'
+
+
+class Notifications(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    title = models.CharField(max_length=128)
+    body = models.CharField(max_length=1024)
+    link = models.CharField(max_length=128)
+    category = models.CharField(max_length=32)
+    read = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "customer_notifications"
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"

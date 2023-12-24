@@ -8,8 +8,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 import pyotp
 from .forms import Step1Form, LoginForm, OTPForm, Reset1Form, Reset2Form, RequestForm, MerchantForm, SupportForm, \
-    SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm
-from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits
+    SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm, KYCForm
+from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits, Notifications, CustomerDocument
 from order.models import Transaction, Order
 from wallet.models import Balance, Withdrawal
 from support.models import Ticket, FAQ, TicketMessage
@@ -21,7 +21,7 @@ from interface.captcha import grecaptcha_verify
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse, HttpResponseRedirect
 from django.core.cache import cache
-from .utils import send_email, send_tg
+from .utils import send_email, send_tg, handle_uploaded_file
 from passlib.context import CryptContext
 from PIL import Image
 from io import BytesIO
@@ -358,6 +358,29 @@ def merchant1(request):
 
 
 @login_required
+def kyc(request):
+    form = KYCForm()
+    verification = CustomerDocument.objects.filter(customer=request.user.customer).first()
+    print(verification)
+    if verification:
+        form = KYCForm(instance=verification)
+    if request.method == 'POST':
+        """if verification:
+            form = KYCForm(request.POST, request.FILES, instance=verification)
+        else:"""
+        form = KYCForm(request.POST, request.FILES)
+        if form.is_valid():
+            for file in request.FILES:
+                print(file)
+            # handle_uploaded_file(request.FILES['file'])
+            return redirect('index')
+        verification = form.save(commit=False)
+        verification.customer = request.user.customer
+        verification.save()
+    return render(request, 'auth/trader/kyc.html', {'form': form, 'kyc': True})
+
+
+@login_required
 def index(request):
     return redirect('transactions')
 
@@ -373,7 +396,7 @@ def transactions_view(request):
         max_amount = 0
     form = WithdrawalForm()
     return render(request, 'accounts/transactions.html',
-                  {'transactions': transactions, 'balances': balances, 'address': address, 'max_amount': max_amount,
+                  {'transactions': transactions[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
                    'form': form})
 
 
@@ -381,7 +404,7 @@ def transactions_view(request):
 def orders_view(request):
     TIME_LIMIT = Settings.objects.first().order_life
     balances = Balance.objects.filter(account=request.user).all()
-    orders = Order.objects.filter(Q(sender=request.user) | Q(trader=request.user)).all()
+    orders = Order.objects.filter(Q(sender=request.user) | Q(trader=request.user)).all().order_by('-created')
     address = DEPOSIT_ADDRESS
     if Customer.objects.filter(user_ptr=request.user).first():
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
@@ -401,6 +424,12 @@ def order_start(request, order_id):
     if request.method == 'POST':
         form = ChoseMethodForm(request.POST)
         method = form.data['method']
+        if order.side == 'OUT':
+            card_number = request.POST.get('card_number')
+            initials = request.POST.get('initials')
+            order.card_number = card_number
+            order.initials = initials
+            order.bank_id = method
         input_link = Links.objects.filter(currency=Currency.objects.get(ticker='RUB'), method_id=method).first()
         order.input_link = input_link
         direction = ExchangeDirection.objects.filter(input=order.output_link, output=input_link).first()
@@ -408,36 +437,75 @@ def order_start(request, order_id):
             traders = TraderExchangeDirections.objects.filter(direction=direction, input=True).all()
         else:
             traders = TraderExchangeDirections.objects.filter(direction=direction, output=True).all()
-        print(traders[0].trader.verification_status())
-        traders = [i for i in traders if i.trader.verification_status().lower() == 'verified']
+        traders = [i for i in traders if i.trader.verification_status().lower() == 'verified' and i.trader.status.lower() == 'active']
         print(traders)
         if not traders:
             order.status = 4
             order.save()
+            merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
+            merchant_balance.amount = merchant_balance.amount + order.output_amount
+            merchant_balance.frozen = merchant_balance.frozen - order.output_amount
+            merchant_balance.save()
+            if order.side == 'OUT':
+                transaction = Transaction.objects.get(other_id_1=order.id)
+                transaction.status = 4
+                transaction.finished = True
+                transaction.save()
             return redirect('order-pay', order_id=order_id)
         trader = random.choice(traders)
         order.trader = trader.trader
-        card = Cards.objects.filter(customer=trader.trader).all().order_by('last_used')[0]
+        card = Cards.objects.filter(customer=trader.trader, method_id=method).all().order_by('last_used')[0]
+        card.last_used = datetime.datetime.now()
+        card.save()
         order.method = card
         order.status = 1
         order.save()
-        # TODO: notify trader
+        if order.side == 'OUT':
+            transaction = Transaction.objects.get(other_id_1=order.id)
+            transaction.receiver = trader.trader
+            transaction.save()
+        notification = Notifications(
+            customer=trader.trader,
+            title=f"Ордер №{order.id}",
+            body=f"Новый ордер на {'вывод' if order.side == 'OUT' else 'ввод'} валюты",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
         return redirect('order-pay', order_id=order_id)
+    side = order.side
     methods = PaymentMethods.objects.all()
-    amount = 100
+    amount = order.input_amount / 100
     form = ChoseMethodForm()
     return render(request, 'payment/popup-start.html',
-                  {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id})
+                  {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id, 'side': side})
 
 
 def order_view(request, order_id):
     try:
+        TIME_LIMIT = Settings.objects.first().order_life * 60
         order = Order.objects.get(uuid=order_id)
+        if TIME_LIMIT <= time.time() - order.created.timestamp():
+            if (order.status in [0, 1] and order.side == 'IN') or (order.status in [0, 2] and order.side == 'OUT'):
+                order.status = 5
+                order.save()
+                error_text = 'Ордер отменен'
+                return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
+            elif (order.status in [0, 1] and order.side == 'IN') or (order.status in [0, 2] and order.side == 'OUT'):
+                order.status = 6
+                order.save()
+                trader = Customer.objects.get(id=order.trader_id)
+                trader.status = 'Inactive'
+                trader.save()
+                error_text = 'Ордер отменен'
+                return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
         if not order:
             return render(request, 'payment/order-not-found.html')
         if order.status == 0:
             return redirect('order-start', order_id=order_id)
-        TIME_LIMIT = Settings.objects.first().order_life
+        if order.status in [4, 5, 6, 7, 8, 9, 10, 12]:
+            error_text = 'Ордер отменен'
+            return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
         side = order.side
         status = order.status
         amount = order.input_amount / order.input_link.currency.denomination
@@ -457,17 +525,215 @@ def order_view(request, order_id):
                                                                'minutes': minutes, 'seconds': seconds,
                                                                'order_id': order_id, 'status': status})
         if status == 2:
+            key = pwd_context.hash(str(order.client_id))
             return render(request, 'payment/order-confirm.html', {'amount': amount, 'time': time_limit,
                                                                   'minutes': minutes, 'seconds': seconds,
-                                                                  'order_id': order_id, 'status': status})
+                                                                  'order_id': order_id, 'status': status, 'key': key})
         if status in [3, 11]:
-            return render(request, 'payment/order-success.html')
-        if status in [4, 5, 6, 7, 8, 9, 10, 12]:
-            error_text = 'Ордер отменен'
-            return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
+            return render(request, 'payment/order-success.html', {'order_id': order_id})
     except Exception as e:
         error_text = str(e)
         return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
+
+
+def realise_crypro(request, order_id):
+    order = Order.objects.get(uuid=order_id)
+    if not order:
+        return JsonResponse({'status': -1})
+    key = request.GET.get('key')
+    if pwd_context.verify(str(order.client_id), str(key)):
+        order.status = 3
+        order.save()
+        transaction = Transaction.objects.get(other_id_1=order.id)
+        transaction.status = 1
+        transaction.finished = True
+        transaction.save()
+        merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
+        trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
+        merchant_balance.frozen = merchant_balance.frozen - order.output_amount
+        trader_balance.amount = trader_balance.amount + order.output_amount
+        merchant_balance.save()
+        trader_balance.save()
+        notification = Notifications(
+            customer=order.trader,
+            title=f"Ордер №{order.id} выполнен",
+            body=f"Ордер №{order.id} выполнен, средства переведены",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
+        notification = Notifications(
+            customer=order.sender,
+            title=f"Ордер №{order.id} выполнен",
+            body=f"Ордер №{order.id} выполнен, средства переведены трейдеру",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
+        return JsonResponse({'status': order.status})
+    return JsonResponse({'status': -1})
+
+
+@login_required
+def realise_crypro_trader(request, order_id):
+    order = Order.objects.get(id=order_id)
+    if not order:
+        return JsonResponse({'status': -1})
+    if order.trader == request.user.customer:
+        order.status = 3
+        order.save()
+        transaction = Transaction(
+            sender=order.trader,
+            receiver=order.sender,
+            site=order.order_site,
+            link=order.output_link,
+            amount=order.output_amount,
+            finished=True,
+            type=4,
+            status=1,
+            counted='1',
+            other_id_1=order.id,
+            category='Ордер клиента',
+            created=datetime.datetime.now(),
+            updated=datetime.datetime.now(),
+        )
+        transaction.save()
+        transaction_commission = Transaction(
+            sender_id=order.sender_id,
+            receiver_id=order.trader_id,
+            site_id=order.order_site_id,
+            link_id=order.output_link_id,
+            amount=order.output_amount*order.trader.interest_rate/100,
+            finished=True,
+            type=6,
+            status=1,
+            counted='1',
+            other_id_1=order.id,
+            category='Комиссия трейдера',
+            created=datetime.datetime.now(),
+            updated=datetime.datetime.now(),
+        )
+        transaction_commission.save()
+        merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
+        trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
+        merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount*order.trader.interest_rate/100
+        trader_balance.amount = trader_balance.amount - order.output_amount + order.output_amount*order.trader.interest_rate/100
+        merchant_balance.save()
+        trader_balance.save()
+        notification = Notifications(
+            customer=order.trader,
+            title=f"Ордер №{order.id} выполнен",
+            body=f"Ордер №{order.id} выполнен, средства переведены мерчанту",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
+        notification = Notifications(
+            customer=order.sender,
+            title=f"Ордер №{order.id} выполнен",
+            body=f"Ордер №{order.id} выполнен, средства переведены",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
+        return JsonResponse({'status': order.status})
+    return JsonResponse({'status': -1})
+
+
+def order_payed(request, order_id):
+    try:
+        order_id = int(order_id)
+    except:
+        pass
+    if type(order_id) == int:
+        order = Order.objects.get(Q(id=order_id))
+    else:
+        order = Order.objects.get(Q(uuid=order_id))
+    if not order:
+        return JsonResponse({'status': -1})
+    order.status = 2
+    order.save()
+    if type(order_id) == str:
+        notification = Notifications(
+            customer=order.trader,
+            title=f"Ордер №{order.id} средства переведены",
+            body=f"Ордер №{order.id} клиент изменил статус на Средства переведены",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
+    return JsonResponse({'status': order.status})
+
+
+def order_incorrect(request, order_id):
+    try:
+        order_id = int(order_id)
+    except:
+        pass
+    if type(order_id) == int:
+        order = Order.objects.get(Q(id=order_id))
+    else:
+        order = Order.objects.get(Q(uuid=order_id))
+    if not order:
+        return JsonResponse({'status': -1})
+    order.status = 8
+    order.save()
+    if type(order_id) == str:
+        notification = Notifications(
+            customer=order.trader,
+            title=f"Ордер №{order.id} неверная оплата",
+            body=f"Ордер №{order.id} клиент изменил статус на Средства не переведены или неверная сумма",
+            link='/orders',
+            category='order'
+        )
+        notification.save()
+    return JsonResponse({'status': order.status})
+
+
+def order_cancel(request, order_id):
+    order = Order.objects.get(uuid=order_id)
+    if not order:
+        return JsonResponse({'status': -1})
+    order.status = 7
+    order.save()
+    notification = Notifications(
+        customer=order.trader,
+        title=f"Ордер №{order.id} отменен",
+        body=f"Ордер №{order.id} клиент отменил ордер",
+        link='/orders',
+        category='order'
+    )
+    notification.save()
+    return JsonResponse({'status': order.status})
+
+
+def order_cancel_trader(request, order_id):
+    order = Order.objects.get(id=order_id)
+    if not order:
+        return JsonResponse({'status': -1})
+    order.status = 4
+    order.save()
+    return JsonResponse({'status': order.status})
+
+
+@login_required
+def trader_active(request):
+    customer = Customer.objects.get(id=request.user.customer.id)
+    if not customer:
+        return JsonResponse({'status': -1})
+    customer.status = "ACTIVE"
+    customer.save()
+    return JsonResponse({'status': customer.status})
+
+
+@login_required
+def trader_inactive(request):
+    customer = Customer.objects.get(id=request.user.customer.id)
+    if not customer:
+        return JsonResponse({'status': -1})
+    customer.status = "Inactive"
+    customer.save()
+    return JsonResponse({'status': customer.status})
 
 
 def order_status(request, order_id):
@@ -475,7 +741,6 @@ def order_status(request, order_id):
     if not order:
         return JsonResponse({'status': -1})
     return JsonResponse({'status': order.status})
-
 
 
 @login_required
@@ -490,7 +755,7 @@ def withdrawals_view(request):
         max_amount = 0
     form = WithdrawalForm()
     return render(request, 'accounts/withdrawals.html',
-                  {'withdrawals': withdrawals, 'balances': balances, 'address': address, 'max_amount': max_amount,
+                  {'withdrawals': withdrawals[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
                    'form': form})
 
 
@@ -691,7 +956,7 @@ def disable_2fa(request):
 @login_required
 def support(request):
     if request.method == 'POST':
-        form = SupportForm(request.POST)
+        form = SupportForm(request.POST, request.FILES)
         new_ticket = Ticket(
             title=form.data['title'],
             priority=0,
@@ -714,9 +979,37 @@ def support(request):
 
 
 @login_required
+def complaint(request, order_id):
+    form = SupportForm()
+    form.initial['title'] = f"Вопрос по ордеру №{order_id}"
+    if request.method == 'POST':
+        form = SupportForm(request.POST, request.FILES)
+        new_ticket = Ticket(
+            title=form.data['title'],
+            priority=0,
+            client=request.user.customer,
+            status=0
+        )
+        new_ticket.save()
+        message = TicketMessage(
+            message=form.data['comment'],
+            author=0,
+            ticket=new_ticket,
+            attachment=form.data['file'],
+            read=0
+        )
+        message.save()
+        order = Order.objects.get(id=order_id)
+        order.status = 10
+        order.save()
+        return redirect('support')
+    return render(request, 'accounts/complaint.html', {'form': form, 'order_id': order_id})
+
+
+@login_required
 def ticket(request, ticket_id):
     if request.method == 'POST':
-        form = SupportMessageForm(request.POST)
+        form = SupportMessageForm(request.POST, request.FILES)
         message = TicketMessage(
             message=form.data['message'],
             author=0,
@@ -730,6 +1023,23 @@ def ticket(request, ticket_id):
         message.save()
     ticket_messages = TicketMessage.objects.filter(ticket_id=ticket_id).all()
     return render(request, 'accounts/ticket.html', {'msgs': ticket_messages, 'ticket_id': ticket_id})
+
+
+@login_required
+def read_all(request, note_id):
+    notifications = Notifications.objects.filter(customer=request.user.customer).all()
+    for notification in notifications:
+        notification.read = True
+        notification.save()
+    return JsonResponse({'status': True})
+
+
+@login_required
+def read(request, note_id):
+    notification = Notifications.objects.get(id=note_id)
+    notification.read = True
+    notification.save()
+    return JsonResponse({'status': True})
 
 
 def logout_view(request):

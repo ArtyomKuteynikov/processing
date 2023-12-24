@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.db.models import Count, Sum, F
-
+from customer.models import Notifications
 from .models import Transaction, Order, Statistics
 
 
@@ -15,6 +15,14 @@ class TransactionAdmin(admin.ModelAdmin):
             balance = obj.sender.balance_set.get(balance_link=obj.link)
             balance.amount = round(balance.amount + obj.amount)
             balance.save()
+            notification=Notifications(
+                customer=obj.sender,
+                title=f"Баланс пополнен",
+                body=f"Баланс аккаунта пополнен на {obj.amount/obj.link.currency.denomination}",
+                link='/transactions',
+                category='input'
+            )
+            notification.save()
         super().save_model(request, obj, form, change)
 
 

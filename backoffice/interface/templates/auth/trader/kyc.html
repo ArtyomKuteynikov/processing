@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+    }
+
+    form {
+        min-width: fit-content;
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    input, button {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #cccccc;
+        border-radius: 5px;
+    }
+
+    button {
+        background-color: #007bff;
+        color: #ffffff;
+        cursor: pointer;
+    }
+    .g-recaptcha{
+       margin: 15px auto !important;
+       width: auto !important;
+       height: auto !important;
+       text-align: -webkit-center;
+       text-align: -moz-center;
+       text-align: -o-center;
+       text-align: -ms-center;
+    }
+    .errorlist
+    {
+        padding: 0;
+        background: #ff555555;
+        border-radius: 20px;
+    }
+    .error input, .error select {
+        border: 2px red solid;
+        }
+</style>
+
+<form method="post" action="{% url 'kyc' %}" enctype="multipart/form-data">
+    <h3>Верификация трейдера</h3>
+    <p>Заполните форму верификации личности</p>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="button is-block is-info is-fullwidth">Отправить</button>
+    <p>Проблема с верификацией? <a href="/support">Техподдержка</a></p>
+</form>
+{% endblock %}

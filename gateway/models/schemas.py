@@ -219,14 +219,14 @@ class OfferData(BaseModel):
 
 class CreateOrder(BaseModel):
     key: str
+    website_key: str
     output_link: str
-    website: int
     amount: float | None = None
     quantity: float | None = None
     comment: str | None = None
-    payment_detail: str | None = None
-    initials: str | None = None
-    side: str | None = 'IN'
+    side: str = 'IN'
+    client: int
+    external: int
 
 
 class OrderFilterSchema(BaseModel):

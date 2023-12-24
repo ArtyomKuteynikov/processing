@@ -10,7 +10,9 @@ def multiply(a, b):
 
 @register.simple_tag
 def divide(a, b):
-    return "{:.2f}".format(float(a / b))
+    if not a or not b:
+        return 0
+    return "{:.2f}".format(float(float(a) / float(b)))
 
 
 @register.simple_tag

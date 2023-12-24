@@ -51,7 +51,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
 
@@ -99,7 +99,7 @@
 
 <body>
 <div style="position: fixed; top: 10px; left: 10px;"><h5 style="color:#026AA2"><img style="height: 23px" src="{% static "logo.png" %}">Процессинг</h5></div>
-<div class="{% if order_id %} column is-4 {% else %} column is-3 {% endif %}">
+<div class="{% if order_id or kyc %} column is-4 {% else %} column is-3 {% endif %}">
 
     <div style="text-align: center;z-index: 1">
         {% block content %}

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db import transaction
 from django.db.models import Sum, Count, Q
-
+from customer.models import Notifications
 from .models import Ticket, TicketMessage, FAQ
 
 
@@ -25,6 +25,14 @@ class TicketAdmin(admin.ModelAdmin):
         )
 
     def save_model(self, request, obj, form, change):
+        notification = Notifications(
+            customer=obj.client,
+            title=f"Новые сообщения по тикету №{obj.id}",
+            body=f"Новые сообщения по тикету №{obj.id}",
+            link=f'/ticket/{obj.id}',
+            category='support'
+        )
+        notification.save()
         super().save_model(request, obj, form, change)
         obj.ticketmessage_set.filter(ticket=obj).update(read=True)
 

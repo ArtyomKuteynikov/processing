@@ -103,6 +103,9 @@ class Order(models.Model):
     uuid = models.CharField(max_length=128)
     method = models.ForeignKey(Cards, on_delete=models.CASCADE, null=True, blank=True)
     side = models.CharField(max_length=4, choices=ORDER_SIDES)
+    bank = models.ForeignKey(PaymentMethods, on_delete=models.CASCADE, null=True, blank=True)
+    card_number = models.CharField(max_length=128, null=True, blank=True)
+    initials = models.CharField(max_length=128, null=True, blank=True)
     client_id = models.IntegerField()
     external_id = models.IntegerField()
 

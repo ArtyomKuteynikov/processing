@@ -13,6 +13,12 @@
         </div>
             {% csrf_token %}
             {{ form.as_p }}
+            {% if side == "OUT" %}
+            <label for="number">Номер карты:</label>
+            <input class="form-control" name="card_number" id="number" placeholder="Введите номер карты">
+            <label for="initials">Инициалы держателя карты:</label>
+            <input class="form-control" name="initials" id="initials" placeholder="Введите инициалы держателя карты">
+            {% endif %}
             <button type="submit" class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none m-0">
                 <span>К оплате</span>
             </button>

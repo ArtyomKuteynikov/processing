@@ -15,7 +15,7 @@
         display: inline-block;
         width: 45px;
         height: 27px;
-        background-image: url('{% static '/icons/Badge (1).png' %}');
+        background-image: url('{% static '/icons/Badge (2).png' %}');
         background-size: cover;
     }
 
@@ -23,7 +23,7 @@
         display: inline-block;
         width: 45px;
         height: 27px;
-        background-image: url('{% static '/icons/Badge (2).png' %}');
+        background-image: url('{% static '/icons/Badge (1).png' %}');
         background-size: cover;
     }
 
@@ -62,10 +62,12 @@
     <tbody>
     {% load custom_tags %}
     {% for i in orders %}
-    <tr>
+    {% if i.side == 'IN' and i.status == 2 %}
+    <tr style="background-color: #CCFFC3;">
         <td>{{ i.id }}</td>
         <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
-        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span></td>
+        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
+        </td>
         <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
         <td>{{ i.input_link.method.name }}</td>
         <td>{{ i.method.name }}</td>
@@ -73,12 +75,133 @@
         <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
         <td>{{ i.output_link }}</td>
         <td><i class="status-{{ i.status }}"></i></td>
-        <td></td>
-        <td></td>
+        <td>
+            <a onclick="confirmOrder('{{ i.id }}');" class="btn btn-light"><i class="bi bi-check-lg"></i></a>
+            <a onclick="incorrectOrder('{{ i.id }}')" class="btn btn-danger"><i class="bi bi-x-lg"></i></a>
+            <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
+        </td>
     </tr>
+    {% elif i.side == 'OUT' and i.status == 1 %}
+    <tr style="background-color: #FFD2D1;">
+        <td>{{ i.id }}</td>
+        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
+        </td>
+        <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        <td>{{ i.input_link.method.name }}</td>
+        <td>{{ i.method.name }}</td>
+        <td>{{ i.sender }}</td>
+        <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
+        <td>{{ i.output_link }}</td>
+        <td><i class="status-{{ i.status }}"></i></td>
+        <td>
+            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#basicModal{{i.id}}" type="button"><i
+                    class="bi bi-credit-card"></i></button>
+            <a onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger"><i class="bi bi-x-lg"></i></a>
+        </td>
+    </tr>
+
+    <div class="modal fade" id="basicModal{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Оплата</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="gray-purple">Переведите деньги на указанные реквизиты и подтвердите оплату</p>
+                    <div class="d-flex justify-content-center align-items-end bg-light-gray rounded-4 p-3 mb-2 mt-4">
+                        <span class="h2 fw-semibold black m-0 mr-1">${% divide i.input_amount i.input_link.currency.denomination %}</span>
+                        <span class="pb-1 sub-sup-font-size gray-purple">RUB</span>
+                    </div>
+                    <div class="d-flex justify-content-center m-3">
+                        <img src="{% static '/icons/arrow-down.svg' %}" alt="">
+                    </div>
+                    <div class="d-flex flex-column align-items-center bg-light-gray rounded-4 p-3 mb-4-5">
+                        <span class="h2 fw-semibold black m-0 mb-1">{{ i.card_number }}</span>
+                        <span class="sub-sup-font-size gray-purple">{{ i.initials }}</span>
+                        <span class="sub-sup-font-size gray-purple">{{ i.bank }}</span>
+                    </div>
+                </div>
+                <div class="modal-footer" style="justify-content: space-around;">
+                    <button style="width: 45%" class="btn btn-info" onclick="paidOrder('{{ i.id }}')">
+                        <span>Я перевел деньги</span>
+                    </button>
+                    <a style="width: 45%" onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger">Деньги не переводил, отмена</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
+        </td>
+        <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        <td>{{ i.input_link.method.name }}</td>
+        <td>{{ i.method.name }}</td>
+        <td>{{ i.sender }}</td>
+        <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
+        <td>{{ i.output_link }}</td>
+        <td><i class="status-{{ i.status }}"></i></td>
+        <td>
+            <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
+        </td>
+    </tr>
+    {% endif %}
     {% endfor %}
     </tbody>
 </table>
+
+<script>
+    function incorrectOrder(orderId) {
+            fetch('/order/incorrect/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                        location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+    function confirmOrder(orderId) {
+            fetch('/order/confirm/trader/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                        location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+    function cancelOrder(orderId) {
+            fetch('/order/cancel/trader/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                        location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+    function paidOrder(orderId) {
+            fetch('/order/paid/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                        location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+</script>
 
 
 {% endblock %}

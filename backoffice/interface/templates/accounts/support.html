@@ -199,7 +199,7 @@
 <div class="modal fade" id="basicModal" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
      aria-hidden="true">
     <div class="modal-dialog">
-        <form method="post" action="{% url 'support' %}">
+        <form method="post" action="{% url 'support' %}" enctype="multipart/form-data">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Создать тикет</h5>

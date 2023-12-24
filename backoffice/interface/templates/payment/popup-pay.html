@@ -21,14 +21,14 @@
         <span class="sub-sup-font-size gray-purple">{{ bank }}</span>
     </div>
     {% if status == 1 %}
-    <button class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
+    <button onclick="paidOrder('{{ order_id }}')" class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
         <img class="mr-2" src="{% static '/icons/check.svg' %}" alt="">
         <span>Я перевел деньги</span>
     </button>
     <div class="d-flex justify-content-center">
         <div class="d-flex align-items-center cursor-pointer">
             <img class="mr-2" src="{% static '/icons/close-red.svg' %}" alt="">
-            <a class="text-error fw-semibold" style="color:#B42318">Деньги не переводил, отменить</a>
+            <a onclick="cancelOrder('{{ order_id }}')" class="text-error fw-semibold" style="color:#B42318">Деньги не переводил, отменить</a>
         </div>
     </div>
     {% else %}
@@ -76,10 +76,32 @@
         }
 
         // Запуск проверки статуса заказа каждые 10 секунд
-        const orderId = '{{ order }}'; // Замените на реальный идентификатор заказа
+        const orderId = '{{ order_id }}'; // Замените на реальный идентификатор заказа
         setInterval(() => {
             checkOrderStatus(orderId);
         }, 5000);
+
+    function cancelOrder(orderId) {
+            fetch('/order/cancel/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                        location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+    function paidOrder(orderId) {
+            fetch('/order/paid/' + orderId)
+                .then(response => response.json())
+                .then(data => {
+                        location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
 
 </script>
 

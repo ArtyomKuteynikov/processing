@@ -50,8 +50,6 @@ class Customer(Base):
         return pwd_context.hash(password)
 
     def verify_password(self, plain_password):
-        if not self.user.password or len(self.user.password) < 250:
-            self.user.password = pwd_context.hash('default')
         return pwd_context.verify(plain_password, self.user.password)
 
     def set_token(self):
@@ -73,6 +71,7 @@ class Websites(Base):
     verified = Column(Integer, nullable=True)  # Assuming WEBSITES_VERIFICATION is an integer field
     verification_code = Column(String(64))
     currency_id = Column(Integer, ForeignKey("currency_curr_token.id"))
+    key = Column(String(128))
     created = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated = Column(DateTime(timezone=True), default=datetime.utcnow)
 
@@ -157,29 +156,65 @@ class ExchangeDirection(Base):
         orm_mode = True
 
 
+class Cards(Base):
+    __tablename__ = "customer_cards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(256))
+    method_id = Column(Integer, ForeignKey("currency_curr_method.id"), nullable=True)
+    currency_id = Column(Integer, ForeignKey("currency_curr_token.id"))
+    customer_id = Column(Integer, ForeignKey("customer.user_ptr_id"))
+    payment_details = Column(String(256))
+    initials = Column(String(256))
+    status = Column(Boolean)
+    last_used = Column(DateTime, default=datetime(1970, 1, 1, 0, 0))
+
+
 class Order(Base):
     __tablename__ = "order_order"
+
     id = Column(Integer, primary_key=True, index=True)
     sender_id = Column(Integer, ForeignKey("customer.user_ptr_id"))
     trader_id = Column(Integer, ForeignKey("customer.user_ptr_id"), nullable=True)
-    input_link_id = Column(Integer, ForeignKey("currency_curr_link.id"))
-    output_link_id = Column(Integer, ForeignKey("currency_curr_link.id"))
+    input_link_id = Column(Integer, ForeignKey("currency_curr_link.id"), nullable=True)
+    output_link_id = Column(Integer, ForeignKey("currency_curr_link.id"), nullable=True)
     order_site_id = Column(Integer, ForeignKey("customer_websites.id"), nullable=True)
     input_amount = Column(Float, nullable=True)
     output_amount = Column(Float, nullable=True)
-    status = Column(Integer, nullable=True)
-    comment = Column(String(1024))
-    created = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated = Column(DateTime(timezone=True), default=datetime.utcnow)
+    status = Column(Integer)
+    comment = Column(String(1024), nullable=True)
+    created = Column(DateTime, default=datetime.utcnow)
+    updated = Column(DateTime, onupdate=datetime.utcnow)
     uuid = Column(String(128))
-    method_id = Column(Integer, ForeignKey('currency_curr_method.id'), nullable=True)
+    method_id = Column(Integer, ForeignKey("customer_cards.id"), nullable=True)
     side = Column(String(4))
-    payment_method_id = Column(Integer, ForeignKey('currency_curr_method.id'), nullable=True)
-    payment_details = Column(String(256), nullable=True)
-    initials = Column(String(256), nullable=True)
+    bank_id = Column(Integer, ForeignKey("currency_curr_method.id"), nullable=True)
+    card_number = Column(String(128))
+    initials = Column(String(128))
+    client_id = Column(Integer)
+    external_id = Column(Integer)
 
     class Config:
         orm_mode = True
+
+
+class Transaction(Base):
+    __tablename__ = "order_transaction"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("customer.user_ptr_id"))
+    receiver_id = Column(Integer, ForeignKey("customer.user_ptr_id"))
+    site_id = Column(Integer, ForeignKey("customer_websites.id"), nullable=True)
+    link_id = Column(Integer, ForeignKey("currency_curr_link.id"), nullable=True)
+    amount = Column(Float)
+    finished = Column(Boolean)
+    type = Column(Integer)
+    status = Column(Integer)
+    counted = Column(String(2))
+    created = Column(DateTime, default=datetime.utcnow)
+    updated = Column(DateTime, onupdate=datetime.utcnow)
+    other_id_1 = Column(Integer, nullable=True)
+    other_id_2 = Column(Integer, nullable=True)
+    category = Column(String(128))
 
 
 class TraderPaymentMethod(Base):

@@ -36,3 +36,9 @@ def send_tg(recipient, message):
     msg = asyncio.run(bot.send_message(chat_id=recipient, text=message))
     return msg.chat_id
 
+
+def handle_uploaded_file(f):
+    with open('myapp/static/upload/'+f.name, 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
+

@@ -1,13 +1,24 @@
 from django import forms
 from django_recaptcha.fields import ReCaptchaField
 from currency.models import Links, PaymentMethods
-from customer.models import Cards, CardsLimits
+from customer.models import Cards, CardsLimits, CustomerDocument
 
 
 class CardsForm(forms.ModelForm):
     class Meta:
         model = Cards
         fields = ['name', 'method', 'payment_details', 'initials', 'status']
+
+
+class KYCForm(forms.ModelForm):
+    class Meta:
+        model = CustomerDocument
+        exclude = ['customer', 'status', 'created', 'updated']
+        # fields = ['passport_number', 'authority', 'date_of_issue', 'date_of_birth', 'passport_scan_1', 'passport_scan_2', 'passport_video']
+        widgets = {
+            'date_of_issue': forms.DateInput(attrs={'type': 'date'}),
+            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
+        }
 
 
 class LimitsForm(forms.ModelForm):

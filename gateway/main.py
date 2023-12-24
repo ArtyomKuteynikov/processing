@@ -22,7 +22,7 @@ from config.main import Settings, LINK
 from telegram_bot.order import start, marked_as_payed, success, cancel, out_order
 from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
-from models import Customer, Order, Balance, Link, Currency, ExchangeDirection, TraderPaymentMethod, User, Network
+from models import Customer, Order, Balance, Link, Currency, ExchangeDirection, TraderPaymentMethod, User, Network, Websites, Transaction
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi_pagination import Page, add_pagination, paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
@@ -67,45 +67,6 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
         status_code=exc.status_code,
         content={"detail": exc.message}
     )
-
-
-async def release_crypto(order_id: int, session: AsyncSession):
-    order = await session.execute(select(Order).where(Order.id == order_id))
-    order = order.fetchone()
-    if order:
-        amount = order[0].input_amount
-        merchant_balance = await session.execute(select(Balance).where((Balance.account_id == order[0].sender_id) &
-                                                                       (Balance.balance_link_id == order[
-                                                                           0].input_link_id)))
-        merchant_balance = merchant_balance.fetchone()
-        if not merchant_balance:
-            merchant_balance = Balance(
-                account_id=order[0].sender_id,
-                balance_link_id=order[0].input_link_id,
-                amount=0
-            )
-            session.add(merchant_balance)
-            await session.commit()
-        trader_balance = await session.execute(select(Balance).where((Balance.account_id == order[0].trader_id) &
-                                                                     (Balance.balance_link_id == order[
-                                                                         0].input_link_id)))
-        trader_balance = trader_balance.fetchone()
-        if not trader_balance:
-            trader_balance = Balance(
-                account_id=order[0].sender_id,
-                balance_link_id=order[0].input_link_id,
-                amount=0
-            )
-            session.add(trader_balance)
-            await session.commit()
-            trader_balance = [trader_balance]
-        if order[0].side == 'IN':
-            trader_balance[0].amount = trader_balance[0].amount - amount - amount * (COMMISSION / 100)
-            merchant_balance[0].amount = merchant_balance[0].amount + amount
-        else:
-            merchant_balance[0].amount = merchant_balance[0].amount - amount - amount * (COMMISSION / 100)
-            trader_balance[0].amount = trader_balance[0].amount + amount
-        await session.commit()
 
 
 async def get_user_by_id(id: int, session: AsyncSession):
@@ -183,13 +144,25 @@ async def timeout_limit(session: AsyncSession, order_id: int):
     order = await session.execute(select(Order).where(Order.id == order_id))
     order = order.fetchone()
     if order:
-        if order[0].status in [0, 1]:
+        if order[0].side == "OUT":
+            balance = await session.execute(
+                select(Balance).where((Balance.account_id == order[0].sender_id) & (Balance.balance_link_id == order[0].output_link_id)))
+            balance = balance.fetchone()
+            balance[0].amount = balance[0].amount + order[0].output_amount
+            balance[0].frozen = balance[0].frozen - order[0].output_amount
+            transaction = await session.execute(select(Transaction).where(Transaction.other_id_1 == order[0].id))
+            transaction = transaction.fetchone()
+            if transaction:
+                transaction[0].status = 4
+                transaction[0].finished = True
+                await session.commit()
+        if (order[0].status in [0, 1] and order[0].side == 'IN') or (order[0].status in [0, 2] and order[0].side == 'OUT'):
             order[0].status = 5
             await session.commit()
             trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
             trader = trader.first()
-            await cancel(trader[0].telegram_id, order[0].uuid)
-        elif order[0].status in [2]:
+            #await cancel(trader[0].telegram_id, order[0].uuid)
+        elif (order[0].status in [2] and order[0].side == 'IN') or (order[0].status in [1] and order[0].side == 'OUT'):
             order[0].status = 6
             await session.commit()
             trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
@@ -197,7 +170,7 @@ async def timeout_limit(session: AsyncSession, order_id: int):
             if trader:
                 trader[0].status = 'Inactive'
                 await session.commit()
-                await cancel(trader[0].telegram_id, order[0].uuid)
+                #await cancel(trader[0].telegram_id, order[0].uuid)
 
 
 async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
@@ -208,35 +181,70 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     network = result.first()
     if not currency or not network:
         return
-    output_link = await session.execute(select(Link).where(Link.currency_id == currency[0].id) & (Link.network_id == network[0].id))
+    website = await session.execute(select(Websites).where((Websites.key == data.website_key) & (Websites.merchant_id == user_id)))
+    website = website.first()
+    if not website:
+        return
+    output_link = await session.execute(select(Link).where((Link.currency_id == currency[0].id) & (Link.network_id == network[0].id)))
     output_link = output_link.first()
     if data.amount:
         amount = round(data.amount * currency[0].denomination)
-        quantity = round((data.amount * course) * currency[0].denomination)
+        quantity = round((data.amount * float(course)) * currency[0].denomination)
     elif data.quantity:
-        amount = round((data.quantity / course) * currency[0].denomination)
+        amount = round((data.quantity / float(course)) * currency[0].denomination)
         quantity = round(data.quantity * currency[0].denomination)
     else:
         return
+    if data.side == "OUT":
+        balance = await session.execute(select(Balance).where((Balance.account_id == user_id) & (Balance.balance_link_id == output_link[0].id)))
+        balance = balance.fetchone()
+        if not balance:
+            return
+        if balance[0].amount < amount:
+            return
+        else:
+            balance[0].amount = balance[0].amount - amount
+            balance[0].frozen = balance[0].frozen + amount
+
     trader_id = None
     order_id = str(uuid.uuid4())
     new_order = Order(
         sender_id=user_id,
         output_link_id=output_link[0].id,
-        order_site_id=data.website,
-        input_amount=amount,
-        output_amount=quantity,
+        order_site_id=website[0].id,
+        input_amount=quantity,
+        output_amount=amount,
         comment=data.comment,
         status=0,
         uuid=order_id,
         created=datetime.datetime.now(),
+        updated=datetime.datetime.now(),
         side=data.side,
-        payment_details=data.payment_detail,
-        initials=data.initials,
-        trader_id=trader_id
+        trader_id=trader_id,
+        external_id=data.external,
+        client_id=data.client
     )
     session.add(new_order)
+    order = new_order
     await session.commit()
+    if data.side == "OUT":
+        transaction = Transaction(
+            sender_id=order.sender_id,
+            receiver_id=order.sender_id,
+            site_id=order.order_site_id,
+            link_id=order.output_link_id,
+            amount=amount,
+            finished=False,
+            type=5,
+            status=2,
+            counted='1',
+            other_id_1=order.id,
+            category='Ордер клиента',
+            created=datetime.datetime.now(),
+            updated=datetime.datetime.now(),
+        )
+        session.add(transaction)
+        await session.commit()
     return new_order
 
 
@@ -246,14 +254,6 @@ async def order_get(order_id: int, user_id: int, session: AsyncSession):
     if user:
         if user[0].sender_id == user_id or user[0].trader_id == user_id:
             return user[0]
-    return None
-
-
-async def order_status_get(order_id: str, session: AsyncSession):
-    result = await session.execute(select(Order).where((Order.uuid == order_id)))
-    user = result.first()
-    if user:
-        return user[0].status
     return None
 
 
@@ -328,7 +328,7 @@ async def create_order(data: CreateOrder, session: AsyncSession = Depends(get_as
     aio.create_task(timeout_limit(session, order.id))
     if order:
         return JSONResponse(status_code=200, content={
-            'link': f'{LINK}/order-start/{order.uuid}' if data.side == 'IN' else f'{LINK}/order/{order.uuid}',
+            'link': f'{LINK}/order/start/{order.uuid}',
             'order_id': order.id,
             'input_link_id': order.input_link_id,
             'output_link_id': order.output_link_id,
@@ -340,84 +340,6 @@ async def create_order(data: CreateOrder, session: AsyncSession = Depends(get_as
         })
     else:
         raise HTTPException(status_code=404)
-
-
-@app.get('/order-start/{order_id}', tags=['Page'], include_in_schema=False)
-async def order_start(request: Request, order_id: str, session: AsyncSession = Depends(get_async_session)):
-    order = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = order.first()
-    if order[0].status != 0:
-        return RedirectResponse(f"/order/{order_id}")
-    return templates.TemplateResponse("chose_method.html", {
-        'request': request,
-        'order_id': order_id,
-    })
-
-
-@app.get('/v1/order-put/{order_id}', tags=['Page'], include_in_schema=False)
-async def chose_payment_method(order_id: str, method: int, session: AsyncSession = Depends(get_async_session)):
-    order = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = order.first()
-    if not order:
-        raise HTTPException(status_code=404)
-    if order[0].trader_id:
-        raise HTTPException(status_code=404)
-    payment_methods = await session.execute(
-        select(TraderPaymentMethod).where((TraderPaymentMethod.method_id == method)))
-    payment_methods = payment_methods.all()
-    traders = []
-    for i in payment_methods:
-        balance = await balances_get(i[0].customer_id, session, link=order[0].output_link_id)
-        if not balance:
-            continue
-        if balance[0][0].amount < order[0].output_amount:
-            continue
-        customer = await get_user_by_id(i[0].customer_id, session)
-        if not customer:
-            continue
-        if customer.status == 'ACTIVE':
-            traders.append((i[0].customer_id, i[0].id, customer))
-    if traders:
-        order = await session.execute(select(Order).where((Order.uuid == order_id)))
-        order = order.fetchone()
-        trader = random.choice(traders)
-        result = await session.execute(select(Link).where((Link.id == order[0].output_link_id)))
-        result = result.first()
-        currency = await session.execute(select(Currency).where((Currency.id == result[0].currency_id)))
-        currency = currency.first()
-        await start(order_id, order[0].output_amount / currency[0].denomination, 'RUB', customer.telegram_id)
-        order[0].trader_id = trader[0]
-        order[0].method_id = trader[1]
-        order[0].status = 1
-        await session.commit()
-    return RedirectResponse(f"/order/{order_id}")
-
-
-@app.get('/v1/order-status/{order_id}', tags=['Order'])
-async def order_status(order_id: str, session: AsyncSession = Depends(get_async_session)):
-    result = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = result.first()
-    if not order:
-        raise HTTPException(status_code=404, detail="ORDER NOT FOUND")
-    if TIME_LIMIT - (int(time.time()) - int(order[0].created.timestamp())) <= 0:
-        if order[0].status in [0, 1]:
-            order[0].status = 5
-            await session.commit()
-            trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
-            trader = trader.first()
-            await cancel(trader[0].telegram_id, order[0].uuid)
-        elif order[0].status in [2]:
-            order[0].status = 6
-            await session.commit()
-            trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
-            trader = trader.fetchone()
-            if trader:
-                trader[0].status = 'Inactive'
-                await session.commit()
-                await cancel(trader[0].telegram_id, order[0].uuid)
-    return JSONResponse(status_code=200, content={
-        'status': order[0].status,
-    })
 
 
 @app.get('/v1/order/{order_id}', tags=['Order'])
@@ -439,14 +361,17 @@ async def order(order_id: int, key: str, session: AsyncSession = Depends(get_asy
         'create_at': int(order.created.timestamp() * 1000),
         'updated_at': int(order.updated.timestamp() * 1000),
         'status': 0,
-        'uuid': order.uuid
+        'side': order.side,
+        'uuid': order.uuid,
+        'client_id': order.client_id,
+        'external_id': order.external_id
     })
 
 
 @app.get('/v1/courses', tags=['Market'])
 async def course(currency: str | None = None, session: AsyncSession = Depends(get_async_session)):
     data = []
-    pairs = await get_exchange_directions(session)
+    pairs = set(await get_exchange_directions(session))
     pairs = [pair for pair in pairs if currency.upper() in pair] if currency else [pair for pair in pairs]
     for pair in pairs:
         data.append({
@@ -474,174 +399,3 @@ async def balance(key: str, session: AsyncSession = Depends(get_async_session)):
     return JSONResponse(status_code=200, content={
         'balance': data
     })
-
-
-@app.get('/order/payed/{order_id}', tags=['Page'], include_in_schema=False)
-async def order_payed(order_id: str, session: AsyncSession = Depends(get_async_session)):
-    order = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = order.first()
-    customer = await get_user_by_id(order[0].trader_id, session)
-    if int(time.time()) < TIME_LIMIT + int(order[0].created.timestamp()) and order[0].status == 1:
-        order = await session.execute(select(Order).where((Order.uuid == order_id)))
-        order = order.fetchone()
-        order[0].status = 2
-        await session.commit()
-        if order[0].side == 'IN':
-            await marked_as_payed(customer.telegram_id, customer.key, order[0].uuid)
-    if order[0].side == 'IN':
-        return RedirectResponse(f"/order/{order_id}")
-    else:
-        return RedirectResponse(f"https://t.me/processing_notifier_bot")
-
-
-@app.get('/order/cancel/{order_id}', tags=['Page'], include_in_schema=False)
-async def order_payed(order_id: str, session: AsyncSession = Depends(get_async_session)):
-    order = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = order.first()
-    customer = await get_user_by_id(order[0].trader_id, session)
-    if int(time.time()) < TIME_LIMIT + int(order[0].created.timestamp()) and order[0].status == 1:
-        order = await session.execute(select(Order).where((Order.uuid == order_id)))
-        order = order.fetchone()
-        order[0].status = 7
-        await session.commit()
-        await cancel(customer.telegram_id, order_id)
-    return RedirectResponse(f"/order/{order_id}")
-
-
-@app.get('/order/incorrect-payment/{order_id}', tags=['Page'], include_in_schema=False)
-async def order_incorrect(order_id: str, key: str, chat_id: str | None = None, session: AsyncSession = Depends(get_async_session)):
-    order = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = order.first()
-    if order[0].side == 'IN':
-        user = await get_user_by_key(key, session)
-        if user is None:
-            raise HTTPException(status_code=403, detail="INCORRECT KEY")
-        order = await session.execute(select(Order).where((Order.uuid == order_id) & (Order.trader_id == user.user_ptr_id)))
-        order = order.first()
-        if not order:
-            raise HTTPException(status_code=403, detail="INCORRECT KEY")
-    else:
-        decoded = jwt.decode(key, SECRET_AUTH, algorithms="HS256")
-        if str(decoded['order']) != str(order_id):
-            raise HTTPException(status_code=403, detail="INCORRECT KEY")
-    if int(time.time()) < TIME_LIMIT + int(order[0].created.timestamp()) and order[0].status == 2:
-        order = await session.execute(select(Order).where((Order.uuid == order_id)))
-        order = order.fetchone()
-        order[0].status = 8
-        await session.commit()
-        if order[0].side == 'IN':
-            await cancel(chat_id, order_id)
-        else:
-            trader = await get_user_by_id(order[0].trader_id, session)
-            await cancel(trader.telegram_id, order_id)
-    return RedirectResponse(f"/order/{order_id}")
-
-
-@app.get('/order/success/{order_id}', tags=['Page'], include_in_schema=False)
-async def order_success(order_id: str, key: str, chat_id: str | None = None,
-                        session: AsyncSession = Depends(get_async_session)):
-    order = await session.execute(select(Order).where((Order.uuid == order_id)))
-    order = order.first()
-    if order[0].side == 'IN':
-        user = await get_user_by_key(key, session)
-        if user is None:
-            raise HTTPException(status_code=403, detail="INCORRECT KEY")
-        order = await session.execute(select(Order).where((Order.uuid == order_id) & (Order.trader_id == user.user_ptr_id)))
-        order = order.first()
-        if not order:
-            raise HTTPException(status_code=403, detail="INCORRECT KEY")
-    else:
-        decoded = jwt.decode(key, SECRET_AUTH, algorithms="HS256")
-        print(decoded)
-        if str(decoded['order']) != str(order_id):
-            raise HTTPException(status_code=403, detail="INCORRECT KEY")
-    if int(time.time()) < TIME_LIMIT + int(order[0].created.timestamp()) and order[0].status == 2:
-        order = await session.execute(select(Order).where((Order.uuid == order_id)))
-        order = order.fetchone()
-        await release_crypto(order[0].id, session)
-        order[0].status = 3
-        await session.commit()
-        if order[0].side == 'IN':
-            await success(chat_id)
-        else:
-            trader = await get_user_by_id(order[0].trader_id, session)
-            await success(trader.telegram_id)
-    return RedirectResponse(f"/order/{order_id}")
-
-
-@app.get('/order/{order_id}', tags=['Page'], include_in_schema=False)
-async def client_order(request: Request, order_id: str, session: AsyncSession = Depends(get_async_session)):
-    try:
-        order = await session.execute(select(Order).where((Order.uuid == order_id)))
-        order = order.first()
-        if not order:
-            raise HTTPException(status_code=404)
-        if TIME_LIMIT - (int(time.time()) - int(order[0].created.timestamp())) <= 0:
-            if order[0].status in [2]:
-                order[0].status = 5
-                await session.commit()
-                trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
-                trader = trader.first()
-                await cancel(trader[0].telegram_id, order[0].uuid)
-            elif order[0].status in [0, 1]:
-                order[0].status = 6
-                await session.commit()
-                trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
-                trader = trader.fetchone()
-                if trader:
-                    trader[0].status = 'Inactive'
-                    await session.commit()
-                    await cancel(trader[0].telegram_id, order[0].uuid)
-        if order[0].status == 0 and order[0].side == 'IN':
-            return RedirectResponse(f"/order-start/{order_id}")
-        if order[0].status in [3, 11]:
-            return templates.TemplateResponse("sucсess.html", {
-                'request': request,
-            })
-        if order[0].status in [4, 5, 6, 7, 8, 9, 10, 12]:
-            return templates.TemplateResponse("canceled.html", {
-                'request': request,
-            })
-        payment_method = await session.execute(
-            select(TraderPaymentMethod).where(TraderPaymentMethod.id == order[0].method_id))
-        payment_method = payment_method.first()
-        result = await session.execute(select(Link).where((Link.id == order[0].output_link_id)))
-        result = result.first()
-        currency = await session.execute(select(Currency).where((Currency.id == result[0].currency_id)))
-        currency = currency.first()
-        if order[0].side == 'IN':
-            return templates.TemplateResponse("order_card.html", {
-                'request': request,
-                'amount': order[0].output_amount / currency[0].denomination,
-                'currency': currency[0].ticker,
-                'time': TIME_LIMIT - (int(time.time()) - int(order[0].created.timestamp())),
-                'order': order_id,
-                'card': payment_method[0].payment_details,
-                'trader': payment_method[0].initials,
-                'status': order[0].status
-            })
-        else:
-            if order[0].status in [0, 1]:
-                return templates.TemplateResponse("order_wait.html", {
-                    'request': request,
-                    'order': order_id,
-                    'amount': order[0].output_amount / currency[0].denomination,
-                    'currency': currency[0].ticker,
-                    'time': TIME_LIMIT - (int(time.time()) - int(order[0].created.timestamp())),
-                    'status': order[0].status
-                })
-            elif order[0].status in [2]:
-                return templates.TemplateResponse("order_realise_crypto.html", {
-                    'request': request,
-                    'order': order_id,
-                    'amount': order[0].output_amount / currency[0].denomination,
-                    'currency': currency[0].ticker,
-                    'time': TIME_LIMIT - (int(time.time()) - int(order[0].created.timestamp())),
-                    'key': jwt.encode({'order': order_id}, SECRET_AUTH, algorithm="HS256").decode("utf-8"),
-                    'status': order[0].status
-                })
-    except Exception as e:
-        return templates.TemplateResponse("error.html", {
-            'request': request,
-            'error': str(e)
-        })

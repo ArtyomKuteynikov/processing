@@ -100,6 +100,7 @@ class TraderAdmin(BaseCustomerAdmin):
 
 
 class MerchantAdmin(BaseCustomerAdmin):
+    exclude = ('personal_course', )
     list_display = ('id', 'created', 'site', 'phone', 'email', 'balance', 'status')
     inlines = [WebsitesInline, BalanceInline, TransactionsInline]
 

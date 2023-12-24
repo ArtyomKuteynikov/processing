@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from order.models import Transaction
+from customer.models import Notifications
 
 from .models import Withdrawal, Balance
 from django.contrib.contenttypes.models import ContentType
@@ -47,6 +48,14 @@ class WithdrawalAdmin(admin.ModelAdmin):
             transaction.save()
             transaction.category = f"Вывод средств #{transaction.id}"
             transaction.save()
+            notification = Notifications(
+                customer=obj.customer,
+                title=f"Средства по запросу №{obj.id} выведены",
+                body=f"Средства по запросу №{obj.id} выведены",
+                link='/withdrawals',
+                category='withdrawal'
+            )
+            notification.save()
         elif obj.status == 'CANCELED':
             transaction = Transaction(
                 sender=obj.customer,
@@ -58,6 +67,14 @@ class WithdrawalAdmin(admin.ModelAdmin):
                 status=4
             )
             transaction.save()
+            notification = Notifications(
+                customer=obj.customer,
+                title=f"Запросу №{obj.id} на вывод средств отменен",
+                body=f"Запросу №{obj.id} на вывод средств отменен",
+                link='/withdrawals',
+                category='withdrawal'
+            )
+            notification.save()
         super().save_model(request, obj, form, change)
 
 

@@ -38,14 +38,13 @@ async def get_exchange_directions():
 
 
 async def current_price(asset, currency, redis_pool):
-    '''exchange = getattr(ccxt, 'binance')()
+    exchange = getattr(ccxt, 'binance')()
     try:
         ohlcv = exchange.fetch_ohlcv(f'{asset}/{currency}', timeframe='1d', limit=1)
         price = ohlcv[0][4]
     except:
         ohlcv = exchange.fetch_ohlcv(f'{currency}/{asset}', timeframe='1d', limit=1)
-        price = 1/ohlcv[0][4]'''
-    price = 92
+        price = 1/ohlcv[0][4]
     await redis_pool.set(f"market_price:{asset}:{currency}", price, ex=600)
 
 
@@ -71,7 +70,7 @@ def ticker_update(redis_pool):
 
 async def market_update(redis_pool):
     while True:
-        pairs = await get_exchange_directions()
+        pairs = set(await get_exchange_directions())
         pairs = [pair for pair in pairs]
         for pair in pairs:
             await current_price(pair[0], pair[1], redis_pool)
