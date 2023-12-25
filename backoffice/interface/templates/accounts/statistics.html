@@ -1,10 +1,185 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block content %}
+{% load static %}
+
+<style>
+    form {
+            min-width: fit-content;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .g-recaptcha{
+           margin: 15px auto !important;
+           width: auto !important;
+           height: auto !important;
+           text-align: -webkit-center;
+           text-align: -moz-center;
+           text-align: -o-center;
+           text-align: -ms-center;
+        }
+        .errorlist
+        {
+            padding: 0;
+            background: #ff555555;
+            border-radius: 20px;
+        }
+        .error input, .error select {
+            border: 2px red solid;
+            }
+        .button-send{
+        max-width: 40px
+        }
+
+     select {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: #495057;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+     }
+
+    #openFile {
+        display: none;
+    }
+
+    form {
+        margin: 20px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .form-control {
+        font-size: 12px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    .tab.active {
+        background-color: #5071BF4D !important;
+    }
+
+
+    .tab:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    tr.active {
+        background-color: #5071BF4D !important;
+    }
+
+    p {
+        font-size: 12px;
+    }
+
+
+    tr:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    table {
+        margin-top: 40px;
+    }
+
+    th div {
+        margin-top: -40px;
+        position: absolute;
+    }
+
+    /* design */
+    table {
+        border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+        background: #EEE;
+    }
+
+    p.mytabs {
+        margin: 0;
+    }
+
+</style>
+<div class="card">
+    <div class="card-body pt-3">
+        <div style="padding: 2%;width: 60%;">
+            <form class="d-flex align-items-center" style="margin: 0;padding: 0;box-shadow: none;">
+                <input type="date" name="date-start" style="margin: 1%" value="{{ start }}">
+                <input type="date" name="date-finish" style="margin: 1%" value="{{ finish }}">
+                <select style="margin: 1%" class="text-blue-light fw-medium form-control" name="groupby">
+                    <option value="days" {% if groupby == 'days' %}selected{% endif %}>По дням</option>
+                    {% if user.customer.account_type == 'MERCHANT' %}
+                    <option value="sites" {% if groupby == 'sites' %}selected{% endif %}>По площадкам</option>
+                    {% else %}
+                    <option value="cards" {% if groupby == 'cards' %}selected{% endif %}>По картам</option>
+                    {% endif %}
+                </select>
+                <button style="margin: 1%" class="btn btn-light">Показать</button>
+            </form>
+        </div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col" rowspan="2">{% if groupby == 'days' %} День {% elif groupby == 'sites' %} Площадка {% else %} Карта {% endif %}<br><br></th>
+                <th scope="col" colspan="3" class="table-info">Ордеры</th>
+                <th scope="col" colspan="3" class="table-info">Транзакции</th>
+                <th scope="col" rowspan="2">Соотношение ордеров<br>к транзакциям(%)<br><br></th>
+                <th scope="col" rowspan="2">Средний чек ордера<br><br></th>
+            </tr>
+            <tr>
+                <th scope="col">Всего</th>
+                <th scope="col">Успешно</th>
+                <th scope="col">Неуспешно</th>
+                <th scope="col">Всего</th>
+                <th scope="col">Успешно</th>
+                <th scope="col">Неуспешно</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% load custom_tags %}
+            {% for i in data %}
+            <tr>
+                <td>{{ i.param }}</td>
+                <td>{% zeros i.total_orders %}</td>
+                <td>{% zeros i.successful_orders %}</td>
+                <td>{% zeros i.unsuccessful_orders %}</td>
+                <td>{% zeros i.total_transactions %}</td>
+                <td>{% zeros i.successful_transactions %}</td>
+                <td>{% zeros i.unsuccessful_transactions %}</td>
+                <td>{% percent i.total_orders i.total_transactions %} %</td>
+                <td>$ {{ i.avg_order_amount }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+{% endblock %}

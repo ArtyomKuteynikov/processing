@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.db.models import Count, Sum, F
 from django.utils.html import format_html
 
-from .models import Customer, CustomerDocument, InviteCodes, Websites, Traders, Merchants, Request, TraderPaymentMethod, User, Settings, Cards, CardsLimits
+from .models import Customer, CustomerDocument, InviteCodes, Websites, Traders, Merchants, Request, TraderPaymentMethod, User, Settings, Cards, CardsLimits, WebsitesCategories
 from wallet.models import Balance
 from order.models import Transaction
 from currency.models import Currency, PaymentMethods
@@ -100,7 +100,6 @@ class TraderAdmin(BaseCustomerAdmin):
 
 
 class MerchantAdmin(BaseCustomerAdmin):
-    exclude = ('personal_course', )
     list_display = ('id', 'created', 'site', 'phone', 'email', 'balance', 'status')
     inlines = [WebsitesInline, BalanceInline, TransactionsInline]
 
@@ -208,6 +207,10 @@ class SettingsAdmin(admin.ModelAdmin):
         return False
 
 
+class WebsiteCategoriesAdmin(admin.ModelAdmin):
+    pass
+
+
 admin.site.register(Request, RequestAdmin)
 admin.site.register(Traders, TraderAdmin)
 admin.site.register(Merchants, MerchantAdmin)
@@ -217,3 +220,4 @@ admin.site.unregister(User)
 admin.site.register(User, StaffAdmin)
 admin.site.register(Cards, CardAdmin)
 admin.site.register(Settings, SettingsAdmin)
+admin.site.register(WebsitesCategories, WebsiteCategoriesAdmin)

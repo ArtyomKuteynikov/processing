@@ -1,7 +1,17 @@
 from django import forms
 from django_recaptcha.fields import ReCaptchaField
 from currency.models import Links, PaymentMethods
-from customer.models import Cards, CardsLimits, CustomerDocument
+from customer.models import Cards, CardsLimits, CustomerDocument, Websites
+
+
+class WebsitesForm(forms.ModelForm):
+    class Meta:
+        model = Websites
+        fields = ['domain', 'description', 'category', 'payment_method', 'currency']
+
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3})
+        }
 
 
 class CardsForm(forms.ModelForm):
@@ -24,7 +34,7 @@ class KYCForm(forms.ModelForm):
 class LimitsForm(forms.ModelForm):
     class Meta:
         model = CardsLimits
-        fields = ['input_operation_limit', 'input_day_limit', 'input_month_limit', 'output_operation_limit', 'output_dat_limit', 'output_month_limit']
+        fields = ['input_min_limit', 'input_operation_limit', 'input_day_limit', 'input_month_limit', 'output_min_limit','output_operation_limit', 'output_dat_limit', 'output_month_limit']
 
 
 class Step1Form(forms.Form):

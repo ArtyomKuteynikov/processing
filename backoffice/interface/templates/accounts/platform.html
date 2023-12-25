@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% load static %}
+
+<style>
+    body {
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    form {
+      min-width: fit-content;
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #cccccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .p-6 {
+      padding: 4rem;
+    }
+
+    .pl-4-5 {
+      padding-left: 2rem;
+    }
+
+    .mb-3-5 {
+      margin-bottom: 0.75rem;
+    }
+
+    .mr-4-5 {
+      margin-right: 2rem;
+    }
+
+    .mr-3-5 {
+      margin-right: 0.75rem;
+    }
+
+    .mb-4-5 {
+      margin-bottom: 2rem;
+    }
+
+    .mr-4-5 {
+      margin-right: 2.25rem;
+    }
+
+    .p-4-5 {
+      padding: 2rem;
+    }
+
+    .p-8 {
+      padding: 0.625rem 1rem;
+    }
+
+    .p-9 {
+      padding: 0.75rem 1.5rem;
+    }
+
+    .sub-sup-font-size {
+      font-size: 0.875rem;
+    }
+
+    .g-recaptcha {
+      margin: 15px auto !important;
+      width: auto !important;
+      height: auto !important;
+      text-align: -webkit-center;
+      text-align: -moz-center;
+      text-align: -o-center;
+      text-align: -ms-center;
+    }
+
+    .gray {
+      color: #344054;
+    }
+
+    .gray-purple {
+      color: #667085 !important;
+    }
+
+    .bg-light-gray {
+      background-color: #F9FAFB;
+    }
+
+    .bg-blue-light {
+      background-color: #0086C9;
+    }
+
+    .bg-blue-light-50 {
+      background-color: #F0F9FF;
+    }
+
+    .bg-blue-light-500 {
+      background-color: #0BA5EC;
+    }
+
+    .black {
+      color: #101828;
+    }
+
+    .text-blue-light {
+      color: #026AA2;
+    }
+
+    .errorlist {
+      padding: 0;
+      background: #ff555555;
+      border-radius: 20px;
+    }
+
+    .error input,
+    .error select {
+      border: 2px red solid;
+    }
+
+    .content-inner {
+      max-width: 488px;
+      width: 100%;
+      border-radius: 22px;
+      background-color: #fff;
+      box-shadow: 0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08);
+    }
+
+    .border-none {
+      border: none;
+    }
+
+    .payments-buttons {
+      box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+    }
+
+    .payments-buttons {
+      border-right: none;
+    }
+
+    .payments-buttons .btn {
+      border-radius: .5rem;
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+    }
+
+    .fs-7 {
+      font-size: 1.125rem !important;
+    }
+
+    .border-gray {
+      border: 1px solid #EAECF0;
+    }
+
+    .border-gray-300 {
+      border: 1px solid #D0D5DD;
+    }
+
+    .border-blue-light {
+      border: 1px solid #7CD4FD;
+    }
+
+    /* .btn-group>.btn-group:not(:first-child)>.btn, .btn-group>.btn:not(:first-child){
+      border-top-left-radius: .5rem;
+      border-bottom-left-radius: .5rem;
+    }
+    .payments-buttons .btn-group>.btn-group:not(:last-child)>.btn, .btn-group>.btn:not(:last-child){
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    } */
+
+    .content-wrapper {
+      border-radius: 48px 0 0 0;
+      border: 1px solid #EAECF0;
+      margin-right: -16px;
+    }
+
+    .info-panel>* {
+      width: 180px;
+      border-right: 1px solid #EAECF0;
+    }
+
+    .panel-buttons>button {
+      width: 134px;
+    }
+
+    .form-search {
+      border: 1px solid #D0D5DD;
+      background: #FFF;
+      box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+      padding: 0.563rem 0.875rem;
+    }
+
+    .form-search::placeholder {
+      color: #667085;
+    }
+
+    textarea.form-search {
+      line-height: 1.35rem;
+      resize: none;
+    }
+
+    .form-select {
+      border: 1px solid #D0D5DD;
+      box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+      padding: 0.563rem 0.875rem;
+      background-image: url('images/select-arrow.svg');
+      background-size: 20px 20px;
+      background-position: center right 0.75rem;
+      cursor: pointer;
+    }
+
+    .name-web .dropdown-toggle::after {
+      display: none;
+    }
+
+    .breadcrumb-item+.breadcrumb-item::before {
+      content: '';
+      background-image: url('images/chevron-right.svg');
+      width: 24px;
+      height: 24px;
+      padding-right: 0;
+    }
+
+    .rounded-6 {
+      border-radius: 3rem !important;
+    }
+
+    .shadow-xl {
+      box-shadow: 0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08);
+    }
+
+    .web-info {
+      padding: 0.125em 0.5rem;
+    }
+
+    .input-group-text {
+      padding: 0.625rem 0.75rem;
+    }
+
+    .copy .input-group-text {
+      border-top-right-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+    }
+
+    .copy .form-control {
+      border-top-left-radius: 0 !important;
+      border-bottom-left-radius: 0 !important;
+      padding: 0.563rem 0.875rem;
+    }
+</style>
+<form method="post" action="{% url 'website' website_id=website_id %}">
+    {% csrf_token %}
+    <div class="d-flex flex-column align-items-end">
+        <div class="w-100 bg-white p-4-5 rounded-6 shadow-xl border-gray">
+            <div class="bg-light-gray rounded-4 pl-5 pr-5 pb-5 mb-4-5">
+                <div class="row">
+                    <div class="col-4 mt-5">
+                        <div>
+                            <label for="domain" class="form-label sub-sup-font-size gray fw-medium mb-1">Домен</label>
+                            <input type="text" class="form-control form-search black rounded-3 mb-2" name="domain"
+                                   id="domain" value="{{ website.domain }}" placeholder="test.ru">
+                            <div class="d-flex flex-wrap">
+                                <h6><span class="badge mr-2 rounded-pill bg-{% if website.status == 0 %}primary{% elif website.status == 1 %}success{% elif website.status == 2%}warning{% else %}danger{% endif %}">
+                                    {{ website.get_status_display }}
+                                </span></h6>
+                                <h6><span class="badge mr-2 rounded-pill bg-{% if website.verified == 0 %}primary{% elif website.verified == 1 %}success{% elif website.verified == 2%}warning{% else %}danger{% endif %}">
+                                    {{ website.get_verified_display }}
+                                </span></h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4 mt-5">
+                        <div>
+                            <label for="category"
+                                   class="form-label sub-sup-font-size gray fw-medium mb-1">Категория</label>
+                            <select class="form-select form-select black rounded-3 mb-2" id="category" name="category">
+                                {% for category in categories %}
+                                <option {% if category.id == website.category_id %}selected{% endif %}
+                                        value="{{ category.id }}">{{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-4 mt-5">
+                        <div>
+                            <label for="currency"
+                                   class="form-label sub-sup-font-size gray fw-medium mb-1">Валюта инвойса</label>
+                            <select name="currency" class="form-select form-select black rounded-3 mb-2" id="currency">
+                                {% for category in currencies %}
+                                <option {% if category.id == website.currency_id %}selected{% endif %}
+                                        value="{{ category.id }}">{{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-4 mt-5">
+                        <div>
+                            <label for="method"
+                                   class="form-label sub-sup-font-size gray fw-medium mb-1">Метод платежей</label>
+                            <select name="payment_method" class="form-select form-select black rounded-3 mb-2" id="method">
+                                <option {% if 0 == website.payment_method %}selected{% endif %}
+                                        value="0">On system page
+                                </option>
+                                <option {% if 1 == website.payment_method %}selected{% endif %}
+                                        value="1">JS popup
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-4 mt-5">
+                        <div class="copy">
+                            <label for="verification"
+                                   class="form-label sub-sup-font-size gray fw-medium mb-1">Верификация</label>
+                            <div class="d-flex align-items-center">
+                                <div class="d-flex border-none w-100 mr-2">
+                          <span onclick="copyToClipboard('verification')"
+                                class="input-group-text d-flex align-items-center border-none gray-purple bg-blue-light rounded-3 cursor-pointer"
+                                id="basic-addon2">
+                            <img src="{% static '/icons/copy.svg' %}" alt="">
+                          </span>
+                                    <p id="verification"
+                                       class="form-control border-none mb-0 shadow-none bg-transparent p-8 border-gray-300 rounded-3"
+                                       aria-label="Введите номер телефона" aria-describedby="basic-addon2">
+                                        {{ website.verification_code }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="sub-sup-font-size gray-purple">
+                                Для завершения процедуры верификации, вы должны подтвердить права на указанный сайт. Для
+                                этого
+                                добавьте в DNS-записи сайта запись типа TXT, содержащую уникальное значение
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4 mt-5">
+                        <div>
+                            <label for="description"
+                                   class="form-label sub-sup-font-size gray fw-medium mb-1">Описание</label>
+                            <textarea id="description" class="form-control form-search black rounded-3 resize-none"
+                                      rows="5" placeholder="О чем сайт"
+                                      name="description">{{ website.description }}</textarea>
+                        </div>
+                    </div>
+                    <div class="col-4 mt-5">
+                        <div class="copy">
+                            <label for="key"
+                                   class="form-label sub-sup-font-size gray fw-medium mb-1">API Private key</label>
+                            <div class="d-flex align-items-center">
+                                <div class="d-flex border-none w-100 mr-2">
+                          <span onclick="copyToClipboard('key')"
+                                class="input-group-text d-flex align-items-center border-none gray-purple bg-blue-light rounded-3 cursor-pointer"
+                                id="basic-addon1">
+                            <img src="{% static '/icons/copy.svg' %}" alt="">
+                          </span>
+                                    <p id="key"
+                                       class="form-control border-none mb-0 shadow-none bg-transparent p-8 border-gray-300 rounded-3"
+                                       aria-label="Введите номер телефона" aria-describedby="basic-addon1">{{ website.key }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button class="bg-blue-light text-white fw-semibold p-8 border-none w-auto mb-0 rounded-3"
+                        type="submit">
+                    <span class="pl-1 pr-1">Сохранить</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+<script>
+    // Функция для копирования текста в буфер обмена
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.innerText;
+
+        navigator.clipboard.writeText(text).then(function () {
+            console.log('Текст скопирован: ' + text);
+        }).catch(function (err) {
+            console.error('Не удалось скопировать текст: ', err);
+        });
+    }
+</script>
+
+{% endblock %}

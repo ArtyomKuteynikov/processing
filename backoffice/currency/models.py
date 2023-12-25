@@ -80,3 +80,22 @@ class ExchangeDirection(models.Model):
 
     def __str__(self):
         return f'{self.input.currency.ticker}/{self.output.currency.ticker}'
+
+
+class Courses(models.Model):
+    pair = models.CharField(max_length=128)
+    binance_in = models.FloatField(default=0)
+    binance_out = models.FloatField(default=0)
+    commex_in = models.FloatField(default=0)
+    commex_out = models.FloatField(default=0)
+    grantex_in = models.FloatField(default=0)
+    grantex_out = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "currency_courses"
+        ordering = ('pair',)
+        verbose_name = "Course"
+        verbose_name_plural = "ParsingCourses"
+
+    def __str__(self):
+        return f'{self.pair} price'

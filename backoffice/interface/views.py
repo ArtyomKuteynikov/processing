@@ -2,14 +2,16 @@ import datetime
 import time
 import uuid
 from functools import wraps
+from itertools import groupby
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 import pyotp
 from .forms import Step1Form, LoginForm, OTPForm, Reset1Form, Reset2Form, RequestForm, MerchantForm, SupportForm, \
-    SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm, KYCForm
-from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits, Notifications, CustomerDocument
+    SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm, KYCForm, \
+    WebsitesForm
+from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits, Notifications, CustomerDocument, Websites, WebsitesCategories
 from order.models import Transaction, Order
 from wallet.models import Balance, Withdrawal
 from support.models import Ticket, FAQ, TicketMessage
@@ -26,7 +28,7 @@ from passlib.context import CryptContext
 from PIL import Image
 from io import BytesIO
 import base64
-from django.db.models import Q
+from django.db.models import Q, Avg, Count, F
 
 from currency.models import Currency, Networks
 
@@ -244,6 +246,10 @@ def login_view(request):
                     return HttpResponseRedirect(reverse('index'))
             cache.set(f"retries:login:{email}", retries + 1, timeout=600)
             if retries >= 2:
+                text = '''Уважаемый клиент!
+                Мы обнаружили что вы ввели неверный пароль 3 раза подряд. Вы сможете повторить вход через 10 минут. Если вы забыли пароль - восстаносите его по этой ссылке ....
+                Если это были не вы - незамедлительно свяжитесь в техподдержкой!'''
+                send_email(email, 'Блокировка на 10 минут', text)
                 form.add_error(None, "Неверный логин или пароль, попробуйте заново через 10 минут")
                 return render(request, 'auth/login.html', {'form': form})
             form.add_error(None, "Неверный логин или пароль. Попробуйте еще раз или восстановите пароль")
@@ -365,7 +371,6 @@ def merchant1(request):
 def kyc(request):
     form = KYCForm()
     verification = CustomerDocument.objects.filter(customer=request.user.customer).first()
-    print(verification)
     if verification:
         form = KYCForm(instance=verification)
     if request.method == 'POST':
@@ -373,9 +378,6 @@ def kyc(request):
             form = KYCForm(request.POST, request.FILES, instance=verification)
         else:
             form = KYCForm(request.POST, request.FILES)
-        """if form.is_valid():
-            for file in request.FILES:
-                handle_uploaded_file(request.FILES[file])"""
         verification = form.save(commit=False)
         verification.customer = request.user.customer
         verification.status = 'request'
@@ -764,6 +766,77 @@ def withdrawals_view(request):
 
 
 @login_required
+def statistics(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    aggregation_param = request.GET.get('groupby', 'days')
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
+    transactions = Transaction.objects.filter(created__range=[start_date, end_date])
+    orders = Order.objects.filter(created__range=[start_date, end_date])
+    if aggregation_param == 'days':
+        transactions_aggregated = transactions.extra({'day': 'date(created)'}).values('day').annotate(
+            total_transactions=Count('id'),
+            successful_transactions=Count('id', filter=Q(status=2)),
+            unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
+            avg_order_amount=Avg('amount')
+        )
+        orders_aggregated = orders.extra({'day': 'date(created)'}).values('day').annotate(
+            total_orders=Count('id'),
+            successful_orders=Count('id', filter=Q(status=3)),
+            unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
+            avg_order_amount=Avg('output_amount')/100
+        )
+        merged_data = []
+        for key, group in groupby(sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: x['day']),
+                                  key=lambda x: x['day']):
+            combined_dict = {'param': key}
+            for item in group:
+                combined_dict.update(item)
+            merged_data.append(combined_dict)
+    elif aggregation_param == 'cards':
+        orders_aggregated = orders.filter(trader=request.user.customer, side='IN').extra({'card': 'method_id'}).values('card').annotate(
+            total_orders=Count('id'),
+            successful_orders=Count('id', filter=Q(status=3)),
+            unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
+            avg_order_amount=Avg('output_amount')/100
+        )
+        merged_data = []
+        for key, group in groupby(sorted(list(orders_aggregated), key=lambda x: str(x['card'])),
+                                  key=lambda x: x['card']):
+            if Cards.objects.filter(id=key).first():
+                combined_dict = {'param': Cards.objects.filter(id=key).first().name}
+                for item in group:
+                    combined_dict.update(item)
+                merged_data.append(combined_dict)
+    elif aggregation_param == 'sites':
+        transactions_aggregated = transactions.extra({'site': 'site_id'}).values('site').annotate(
+            total_transactions=Count('id'),
+            successful_transactions=Count('id', filter=Q(status=2)),
+            unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
+            avg_order_amount=Avg('amount')
+        )
+        orders_aggregated = orders.extra({'site': 'order_site_id'}).values('site').annotate(
+            total_orders=Count('id'),
+            successful_orders=Count('id', filter=Q(status=3)),
+            unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
+            avg_order_amount=Avg('output_amount')/100
+        )
+        merged_data = []
+        for key, group in groupby(sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: str(x['site'])),
+                                  key=lambda x: str(x['site'])):
+            if key and key != 'None':
+                if Websites.objects.filter(id=key).first():
+                    combined_dict = {'param': Websites.objects.filter(id=key).first().domain}
+                    for item in group:
+                        combined_dict.update(item)
+                    merged_data.append(combined_dict)
+    else:
+        merged_data = 0
+    return render(request, 'accounts/statistics.html', {'groupby': aggregation_param, 'start': start, 'finish': end, 'data': merged_data})
+
+
+@login_required
 def cards(request):
     cards = Cards.objects.filter(customer=request.user).all()
     if request.method == 'POST':
@@ -780,9 +853,11 @@ def cards(request):
         card.save()
         limits = CardsLimits(
             card=card,
+            input_min_limit=0,
             input_operation_limit=0,
             input_day_limit=0,
             input_month_limit=0,
+            output_min_limit=0,
             output_operation_limit=0,
             output_dat_limit=0,
             output_month_limit=0,
@@ -863,6 +938,31 @@ def withdrawals(request):
         )
         withdrawal.save()
     return redirect('withdrawals')
+
+
+@login_required
+def websites(request):
+    websites = request.user.customer.websites_set.all()
+    if request.method == 'POST':
+        form = WebsitesForm(request.POST)
+        website = form.save(commit=False)
+        website.merchant = request.user.customer
+        website.save()
+    form = WebsitesForm()
+    return render(request, 'accounts/platforms.html', {'websites': websites, 'form': form})
+
+
+@login_required
+def website(request, website_id):
+    website = Websites.objects.get(id=website_id)
+    categories = WebsitesCategories.objects.all()
+    currencies = Currency.objects.all()
+    if request.method == 'POST':
+        form = WebsitesForm(request.POST, instance=website)
+        website = form.save()
+        website.save()
+    return render(request, 'accounts/platform.html', {'website': website, 'categories': categories,
+                                                      'currencies': currencies, 'website_id': website_id})
 
 
 @login_required
@@ -972,7 +1072,7 @@ def support(request):
             message=form.data['comment'],
             author=0,
             ticket=new_ticket,
-            attachment=form.data['attachment'],
+            attachment=request.FILES['file'],
             read=0
         )
         message.save()
@@ -999,7 +1099,7 @@ def complaint(request, order_id):
             message=form.data['comment'],
             author=0,
             ticket=new_ticket,
-            attachment=form.data['file'],
+            attachment=request.FILES['file'],
             read=0
         )
         message.save()

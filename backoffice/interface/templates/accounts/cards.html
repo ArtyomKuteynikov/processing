@@ -147,14 +147,16 @@
                 <th scope="col" rowspan="2">Номер карты<br><br></th>
                 <th scope="col" rowspan="2">Банк<br><br></th>
                 <th scope="col" rowspan="2">Валюта<br><br></th>
-                <th scope="col" colspan="3" class="table-info">Лимиты на ввод</th>
-                <th scope="col" colspan="3" class="table-info">Лимиты на вывод</th>
+                <th scope="col" colspan="4" class="table-info">Лимиты на ввод</th>
+                <th scope="col" colspan="4" class="table-info">Лимиты на вывод</th>
                 <th scope="col" rowspan="2">Статус<br><br></th>
             </tr>
             <tr>
+                <th scope="col">Мин. сумма</th>
                 <th scope="col">На операцию</th>
                 <th scope="col">В сутки</th>
                 <th scope="col">В месяц</th>
+                <th scope="col">Мин. сумма</th>
                 <th scope="col">На операцию</th>
                 <th scope="col">В сутки</th>
                 <th scope="col">В месяц</th>
@@ -168,9 +170,11 @@
                 <td>{{ i.payment_details }}</td>
                 <td>{{ i.method.name }}</td>
                 <td>{{ i.currency.ticker }}</td>
+                <td>{{ i.limits.input_min_limit }}</td>
                 <td>{{ i.limits.input_operation_limit }}</td>
                 <td>{{ i.limits.input_day_limit }}</td>
                 <td>{{ i.limits.input_month_limit }}</td>
+                <td>{{ i.limits.output_min_limit }}</td>
                 <td>{{ i.limits.output_operation_limit }}</td>
                 <td>{{ i.limits.output_dat_limit }}</td>
                 <td>{{ i.limits.output_month_limit }}</td>

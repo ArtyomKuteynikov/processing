@@ -209,14 +209,23 @@ class Merchants(Customer):
         verbose_name_plural = "Merchants"
 
 
+class WebsitesCategories(models.Model):
+    name = models.CharField(max_length=128)
+
+    def __str__(self):
+        return self.name
+
+
 class Websites(models.Model):
     merchant = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    domain = models.CharField(max_length=128)
-    status = models.IntegerField(choices=WEBSITES_STATUSES)
-    payment_method = models.IntegerField(choices=PAYMENT_METHODS)
-    verified = models.IntegerField(choices=WEBSITES_VERIFICATION)
-    verification_code = models.CharField(max_length=64)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
+    domain = models.CharField(max_length=128, verbose_name='Домен')
+    description = models.CharField(max_length=1024, verbose_name='Описание')
+    category = models.ForeignKey(WebsitesCategories, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Категория')
+    status = models.IntegerField(choices=WEBSITES_STATUSES, default=0)
+    payment_method = models.IntegerField(choices=PAYMENT_METHODS, default=0, verbose_name='Метод платежей')
+    verified = models.IntegerField(choices=WEBSITES_VERIFICATION, default=0)
+    verification_code = models.CharField(max_length=64, auto_created=uuid.uuid4, default=uuid.uuid4)
+    currency = models.ForeignKey(Currency, on_delete=models.CASCADE, verbose_name='Валюта инвойса')
     key = models.CharField(max_length=128, auto_created=uuid.uuid4, default=uuid.uuid4)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -248,7 +257,7 @@ class Cards(models.Model):
     method = models.ForeignKey(PaymentMethods, on_delete=models.CASCADE, verbose_name='Банк')
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE, verbose_name='Валюта')
     customer = models.ForeignKey(Traders, on_delete=models.CASCADE)
-    payment_details = models.CharField(max_length=256, verbose_name='Номер карты')
+    payment_details = models.CharField(max_length=19, verbose_name='Номер карты')
     initials = models.CharField(max_length=256, verbose_name='Инициалы владельца карты')
     status = models.BooleanField(verbose_name='Карта активна')
     last_used = models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0))
@@ -264,9 +273,11 @@ class Cards(models.Model):
 
 class CardsLimits(models.Model):
     card = models.OneToOneField(Cards, on_delete=models.CASCADE)
+    input_min_limit = models.IntegerField()
     input_operation_limit = models.IntegerField()
     input_day_limit = models.IntegerField()
     input_month_limit = models.IntegerField()
+    output_min_limit = models.IntegerField()
     output_operation_limit = models.IntegerField()
     output_dat_limit = models.IntegerField()
     output_month_limit = models.IntegerField()

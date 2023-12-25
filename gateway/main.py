@@ -48,7 +48,6 @@ add_pagination(app)
 
 templates = Jinja2Templates(directory="templates")
 
-COMMISSION = 2
 TIME_LIMIT = 600
 
 
@@ -184,6 +183,8 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     website = await session.execute(select(Websites).where((Websites.key == data.website_key) & (Websites.merchant_id == user_id)))
     website = website.first()
     if not website:
+        return
+    if website[0].verified != 1 or website[0].status != 1:
         return
     output_link = await session.execute(select(Link).where((Link.currency_id == currency[0].id) & (Link.network_id == network[0].id)))
     output_link = output_link.first()

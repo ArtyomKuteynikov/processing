@@ -130,20 +130,22 @@
         {% csrf_token %}
         <div class="card-body pt-3">
             <div class="row">
-                <div class="col-xl-4">
+                <div class="col-xl-3">
                     {{ form.as_p }}
                 </div>
-                <div class="col-xl-8">
+                <div class="col-xl-9">
                     <table class="table">
                         <thead>
                         <tr>
-                            <th scope="col" colspan="3" class="table-info">Лимиты на ввод</th>
-                            <th scope="col" colspan="3" class="table-info">Лимиты на вывод</th>
+                            <th scope="col" colspan="4" class="table-info">Лимиты на ввод</th>
+                            <th scope="col" colspan="4" class="table-info">Лимиты на вывод</th>
                         </tr>
                         <tr>
+                            <th scope="col">Мин. сумма</th>
                             <th scope="col">На операцию</th>
                             <th scope="col">В сутки</th>
                             <th scope="col">В месяц</th>
+                            <th scope="col">Мин. сумма</th>
                             <th scope="col">На операцию</th>
                             <th scope="col">В сутки</th>
                             <th scope="col">В месяц</th>

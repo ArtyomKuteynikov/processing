@@ -1,10 +1,199 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block content %}
+{% load static %}
+<style>
+    form {
+            min-width: fit-content;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .g-recaptcha{
+           margin: 15px auto !important;
+           width: auto !important;
+           height: auto !important;
+           text-align: -webkit-center;
+           text-align: -moz-center;
+           text-align: -o-center;
+           text-align: -ms-center;
+        }
+        .errorlist
+        {
+            padding: 0;
+            background: #ff555555;
+            border-radius: 20px;
+        }
+        .error input, .error select {
+            border: 2px red solid;
+            }
+        .button-send{
+        max-width: 40px
+        }
+
+     select {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: #495057;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+     }
+
+    #openFile {
+        display: none;
+    }
+
+    form {
+        margin: 20px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
+    .form-control {
+        font-size: 12px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    .tab.active {
+        background-color: #5071BF4D !important;
+    }
+
+
+    .tab:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    tr.active {
+        background-color: #5071BF4D !important;
+    }
+
+    p {
+        font-size: 12px;
+    }
+
+
+    tr:hover {
+        background-color: #5071BF4D !important;
+    }
+
+    table {
+        margin-top: 40px;
+    }
+
+    th div {
+        margin-top: -40px;
+        position: absolute;
+    }
+
+    /* design */
+    table {
+        border-collapse: collapse;
+    }
+
+    tr:nth-child(even) {
+        background: #EEE;
+    }
+
+    p.mytabs {
+        margin: 0;
+    }
+
+</style>
+<div class="card">
+    <div class="card-body pt-3">
+        <div style="display: flex;flex-direction: row;padding: 2%">
+            <div style="padding: 2%">
+                <button data-bs-toggle="modal" data-bs-target="#basicModal" style="color: #fff !important"
+                        type="button" class="btn btn-primary">Добавить площадку
+                </button>
+            </div>
+            <div style="display: flex;padding: 2%">
+                <input class="form-control" id="search" type="text" name="query" placeholder="Поиск"
+                       title="Enter search keyword">
+                <button class="btn btn-light" type="submit" title="Search"
+                        onclick="search(document.getElementById('search').value)"><i class="bi bi-search"></i></button>
+            </div>
+        </div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Домен</th>
+                <th scope="col">Категория</th>
+                <th scope="col">Статус</th>
+                <th scope="col">Верификация</th>
+                <th scope="col">Описание</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for i in websites %}
+            <tr onclick="window.location.href='/website/{{ i.id }}'; return false">
+                <td>{{ i.id }}</td>
+                <td>{{ i.domain }}</td>
+                <td>{{ i.category.name }}</td>
+                <td>
+
+                    <span class="badge rounded-pill bg-{% if i.status == 0 %}primary{% elif i.status == 1 %}success{% elif i.status == 2%}warning{% else %}danger{% endif %}">
+                        {{ i.get_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge rounded-pill bg-{% if i.verified == 0 %}primary{% elif i.verified == 1 %}success{% elif i.verified == 2%}warning{% else %}danger{% endif %}">
+                        {{ i.get_verified_display }}
+                    </span>
+                </td>
+                <td>{{ i.description }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="modal fade" id="basicModal" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="post" action="{% url 'websites' %}">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Добавть площадку</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <button type="submit" class="btn btn-primary">Добавить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
