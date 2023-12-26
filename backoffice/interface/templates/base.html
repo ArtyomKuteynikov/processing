@@ -169,7 +169,15 @@
                 <h6>Cтатус активности</h6>
             </div>
         </nav>
+        {% else %}
+        <nav class="header-nav  ms-auto d-none d-lg-block d-md-block d-xl-block" style="display: none !important">
+            <div class="form-check form-switch" style="padding-left: 2rem">
+                <h6><input class="form-check-input" type="checkbox" id="traderStatus" {% if user.customer.status == 'ACTIVE' %} checked {% endif %}></h6>
+                <h6>Cтатус активности</h6>
+            </div>
+        </nav>
         {% endif %}
+
 
         <nav class="header-nav ms-auto d-none d-lg-block d-md-block d-xl-block">
             <h6>Баланс: {{ user.customer.total_balance }} $</h6>
@@ -180,7 +188,7 @@
         <nav class="header-nav ms-auto">
             <ul class="d-flex align-items-center">
 
-                <li class="nav-item  d-none d-lg-block d-md-block d-xl-block">
+                <!--li class="nav-item  d-none d-lg-block d-md-block d-xl-block">
                     <div style="display: flex;padding: 2%">
                         <input class="form-control" id="search" type="text" name="query" placeholder="Поиск"
                                title="Enter search keyword">
@@ -188,7 +196,7 @@
                                 onclick="search(document.getElementById('search').value)"><i class="bi bi-search"></i>
                         </button>
                     </div>
-                </li><!-- End Search Icon-->
+                </li--><!-- End Search Icon-->
                 <li class="nav-item dropdown">
 
                     <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown">
@@ -199,7 +207,6 @@
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
                         <li class="dropdown-header">
                             У вас {{ user.customer.unread_notifications }} новых уведомлнений
-                            <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">Все</span></a>
                         </li>
                         {% for i in user.customer.notifications %}
                         <li>

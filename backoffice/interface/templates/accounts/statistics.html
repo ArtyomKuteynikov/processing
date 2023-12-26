@@ -128,8 +128,10 @@
 </style>
 <div class="card">
     <div class="card-body pt-3">
-        <div style="padding: 2%;width: 60%;">
-            <form class="d-flex align-items-center" style="margin: 0;padding: 0;box-shadow: none;">
+        <div style="justify-content: space-between;padding: 2%;padding-top: 0;padding-bottom: 0; padding: 0"
+             class="d-flex align-items-center">
+            <form class="d-flex align-items-center"
+                  style="margin: 0;padding-top: 0;padding-bottom: 0;padding: 0;box-shadow: none;">
                 <input type="date" name="date-start" style="margin: 1%" value="{{ start }}">
                 <input type="date" name="date-finish" style="margin: 1%" value="{{ finish }}">
                 <select style="margin: 1%" class="text-blue-light fw-medium form-control" name="groupby">
@@ -142,11 +144,17 @@
                 </select>
                 <button style="margin: 1%" class="btn btn-light">Показать</button>
             </form>
+            <div class="row">
+            <input class="form-control" id="searchInput" type="text" name="query" placeholder="Поиск"
+                   title="Enter search keyword" style="width: 45%;margin: 0;">
+            <a class="btn btn-info" href="/statistics/csv" style="width: 45%;margin: 0;">.CSV</a>
+                </div>
         </div>
         <table class="table">
             <thead>
             <tr>
-                <th scope="col" rowspan="2">{% if groupby == 'days' %} День {% elif groupby == 'sites' %} Площадка {% else %} Карта {% endif %}<br><br></th>
+                <th scope="col" rowspan="2">{% if groupby == 'days' %} День {% elif groupby == 'sites' %} Площадка {%
+                    else %} Карта {% endif %}<br><br></th>
                 <th scope="col" colspan="3" class="table-info">Ордеры</th>
                 <th scope="col" colspan="3" class="table-info">Транзакции</th>
                 <th scope="col" rowspan="2">Соотношение ордеров<br>к транзакциям(%)<br><br></th>
@@ -173,13 +181,36 @@
                 <td>{% zeros i.successful_transactions %}</td>
                 <td>{% zeros i.unsuccessful_transactions %}</td>
                 <td>{% percent i.total_orders i.total_transactions %} %</td>
-                <td>$ {{ i.avg_order_amount }}</td>
+                <td>$ {% zeros i.avg_order_amount %}</td>
             </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+<script>
+    document.getElementById("searchInput").addEventListener("input", function() {
+        const filter = this.value.toLowerCase();
+        const table = document.getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            let rowContainsFilter = false;
+
+            for (let j = 0; j < cells.length; j++) {
+                const cellText = cells[j].innerText.toLowerCase();
+
+                if (cellText.includes(filter)) {
+                    rowContainsFilter = true;
+                    break;
+                }
+            }
+
+            rows[i].style.display = rowContainsFilter ? "" : "none";
+        }
+    });
+</script>
 
 
 {% endblock %}

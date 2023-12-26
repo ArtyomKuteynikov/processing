@@ -43,6 +43,28 @@
         background-size: cover;
     }
 </style>
+<style>
+    .table thead th {
+        vertical-align: middle;
+        align-content: center;
+        align-items: center;
+        padding: 5px;
+        /* vertical-align: bottom; */
+        border-bottom: 2px solid #dee2e6;
+    }
+</style>
+<div style="justify-content: space-between;padding: 2%;padding-top: 0;padding-bottom: 0; padding: 0" class="d-flex align-items-center">
+    <form class="d-flex align-items-center" style="margin: 0;padding-top: 0;padding-bottom: 0;padding: 0;box-shadow: none;">
+        <input type="date" name="date-start" style="margin: 1%" value="{{ start }}">
+        <input type="date" name="date-finish" style="margin: 1%" value="{{ finish }}">
+        <button style="margin: 1%" class="btn btn-light">Показать</button>
+    </form>
+    <div class="row">
+            <input class="form-control" id="searchInput" type="text" name="query" placeholder="Поиск"
+                   title="Enter search keyword" style="width: 45%;margin: 0;">
+            <a class="btn btn-info" href="/withdrawals/csv" style="width: 45%;margin: 0;">.CSV</a>
+                </div>
+</div>
 
 <table class="table">
     <thead>
@@ -60,7 +82,7 @@
     {% for i in withdrawals %}
     <tr>
         <td>{{ i.id }}</td>
-        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td>{% time_date i.created user.customer.time_zone %}<br>{% time_hours i.created user.customer.time_zone %}</td>
         <td>${% divide i.amount i.currency.currency.denomination %}</td>
         <td>{{ i.address }}</td>
         <td><i class="status-{{ i.status }}"></i></td>
@@ -69,4 +91,27 @@
     {% endfor %}
     </tbody>
 </table>
+<script>
+    document.getElementById("searchInput").addEventListener("input", function() {
+        const filter = this.value.toLowerCase();
+        const table = document.getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            let rowContainsFilter = false;
+
+            for (let j = 0; j < cells.length; j++) {
+                const cellText = cells[j].innerText.toLowerCase();
+
+                if (cellText.includes(filter)) {
+                    rowContainsFilter = true;
+                    break;
+                }
+            }
+
+            rows[i].style.display = rowContainsFilter ? "" : "none";
+        }
+    });
+</script>
 {% endblock %}

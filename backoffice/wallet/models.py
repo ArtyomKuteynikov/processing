@@ -24,6 +24,9 @@ class Balance(models.Model):
     def get_balance(self):
         return self.amount / self.balance_link.currency.denomination
 
+    def __str__(self):
+        return f"{self.account.email}'s {self.balance_link} wallet"
+
     class Meta:
         db_table = "wallet_balance"
         ordering = ('created',)

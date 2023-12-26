@@ -201,7 +201,7 @@ class Customer(User):
         return total_balance or 0
 
     def notifications(self):
-        return self.notifications_set.filter(read=False).all()
+        return self.notifications_set.filter(read=False).all()[::-1]
 
     def unread_notifications(self):
         return len(self.notifications_set.filter(read=False).all())

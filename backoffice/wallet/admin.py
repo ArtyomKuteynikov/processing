@@ -24,7 +24,7 @@ class WalletAdmin(admin.ModelAdmin):
 
 
 class WithdrawalAdmin(admin.ModelAdmin):
-    list_display = ['customer', 'amount', 'currency', 'status', 'created', 'updated']
+    list_display = ['id', 'customer', 'amount', 'currency', 'status', 'created', 'updated']
     readonly_fields = ['created', 'updated']
 
     def save_model(self, request, obj, form, change):

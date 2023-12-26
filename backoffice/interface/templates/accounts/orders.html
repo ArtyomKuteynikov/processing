@@ -43,6 +43,30 @@
         background-size: cover;
     }
 </style>
+<style>
+    .table thead th {
+        vertical-align: middle;
+        align-content: center;
+        align-items: center;
+        padding: 5px;
+        /* vertical-align: bottom; */
+        border-bottom: 2px solid #dee2e6;
+    }
+</style>
+<div style="justify-content: space-between;padding: 2%;padding-top: 0;padding-bottom: 0; padding: 0" class="d-flex align-items-center">
+    <form class="d-flex align-items-center" style="margin: 0;padding-top: 0;padding-bottom: 0;padding: 0;box-shadow: none;">
+        <input type="date" name="date-start" style="margin: 1%" value="{{ start }}">
+        <input type="date" name="date-finish" style="margin: 1%" value="{{ finish }}">
+        <button style="margin: 1%" class="btn btn-light">Показать</button>
+    </form>
+    <div class="row">
+            <input class="form-control" id="searchInput" type="text" name="query" placeholder="Поиск"
+                   title="Enter search keyword" style="width: 45%;margin: 0;">
+            <a class="btn btn-info" href="/orders/csv" style="width: 45%;margin: 0;">.CSV</a>
+                </div>
+</div>
+
+
 <table class="table">
     <thead>
     <tr>
@@ -50,36 +74,129 @@
         <th scope="col">Дата и время</th>
         <th scope="col">Тип ордера</th>
         <th scope="col">Входящая сумма</th>
+         {% if user.customer.account_type == "TRADER" %}
         <th scope="col">Банк</th>
         <th scope="col">Карта</th>
-        <th scope="col">От кого</th>
+        {% else %}
+        <th scope="col">Площадка</th>
+        {% endif %}
         <th scope="col">Исходящая сумма</th>
         <th scope="col">Валюта</th>
         <th scope="col">Статус</th>
+         {% if user.customer.account_type == "TRADER" %}
         <th scope="col">Оставшееся время/действия</th>
+        {% else %}
+        <th scope="col">Client ID</th>
+        <th scope="col">External ID</th>
+        <th scope="col">Контакт клиента</th>
+        {% endif %}
+    </tr>
+    <tr style="background: #fff;">
+        <th scope="col"></th>
+        <th scope="col"></th>
+        <th scope="col">
+            <select class="form-control input-sm m0" id="side-filter">
+                <option class="form-control" value="">Все</option>
+                <option class="form-control" value="Выплата">Выплата</option>
+                <option class="form-control" value="Приём">Приём</option>
+            </select>
+        </th>
+        <th scope="col">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ОТ" id="input_amount-from">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ДО" id="input_amount-to">
+        </th>
+         {% if user.customer.account_type == "TRADER" %}
+        <th scope="col">
+            <select class="form-control input-sm m0" id="bank-filter">
+                <option class="form-control" value="">Все</option>
+                {% for i in banks %}
+                <option class="form-control" value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+            </select>
+        </th>
+        <th scope="col">
+            <select class="form-control input-sm m0" id="card-filter">
+                <option class="form-control" value="">Все</option>
+                {% for i in cards %}
+                <option class="form-control" value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+            </select>
+        </th>
+        {% else %}
+        <th scope="col">
+            <select class="form-control input-sm m0" id="site-filter">
+                <option class="form-control" value="">Все</option>
+                {% for i in sites %}
+                <option class="form-control" value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+            </select>
+        </th>
+        {% endif %}
+        <th scope="col">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ОТ" id="output_amount-from">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ДО" id="output_amount-to">
+        </th>
+        <th scope="col">
+            <select class="form-control input-sm m0" id="currency-filter">
+                <option class="form-control" value="">Все</option>
+                {% for i in output_links %}
+                <option class="form-control" value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+            </select>
+        </th>
+        <th scope="col">
+            <select class="form-control input-sm m0" id="status-filter">
+                <option class="form-control" value="">Все</option>
+                {% for i in statuses %}
+                <option class="form-control" value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+            </select>
+        </th>
+        {% if user.customer.account_type == "TRADER" %}
+        <th scope="col"></th>
+        {% else %}
+        <th scope="col">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ДО" id="client_id">
+        </th>
+        <th scope="col">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ДО" id="external_id">
+        </th>
+        <th scope="col">
+            <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ДО" id="client_contact">
+        </th>
+        {% endif %}
     </tr>
     </thead>
-    <tbody>
+    <tbody id="filtered-data">
     {% load custom_tags %}
     {% for i in orders %}
     {% if i.side == 'IN' and i.status == 2 %}
     <tr style="background-color: #CCFFC3;">
         <td>{{ i.id }}</td>
-        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
-        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
+        <td>{% time_date i.created user.customer.time_zone %}<br>{% time_hours i.created user.customer.time_zone %}</td>
+        <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %}Приём{% else %}Выплата{% endif %}</span>
         </td>
         <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        {% if user.customer.account_type == "TRADER" %}
         <td>{{ i.input_link.method.name }}</td>
         <td>{{ i.method.name }}</td>
-        <td>{{ i.sender }}</td>
+        {% else %}
+        <td>{{ i.order_site.domain }}</td>
+        {% endif %}
         <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
         <td>{{ i.output_link }}</td>
-        <td><i class="status-{{ i.status }}"></i></td>
+        <td><p style="display: none">{{ i.get_status_display }}</p><i class="status-{{ i.status }}"></i></td>
+        {% if user.customer.account_type == "TRADER" %}
         <td>
             <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#confirmOrderConfirm{{i.id}}" type="button"><i class="bi bi-check-lg"></i></button>
             <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#incorrectOrderConfirm{{i.id}}" type="button"><i class="bi bi-x-lg"></i></button>
             <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
         </td>
+        {% else %}
+        <td>{{ i.client_id }}</td>
+        <td>{{ i.external_id }}</td>
+        <td>{{ i.client_contact }}</td>
+        {% endif %}
     </tr>
 
     <div class="modal fade" id="confirmOrderConfirm{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
@@ -122,21 +239,30 @@
     {% elif i.side == 'OUT' and i.status == 1 %}
     <tr style="background-color: #FFD2D1;">
         <td>{{ i.id }}</td>
-        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td>{% time_date i.created user.customer.time_zone %}<br>{% time_hours i.created user.customer.time_zone %}</td>
         <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
         </td>
         <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        {% if user.customer.account_type == "TRADER" %}
         <td>{{ i.input_link.method.name }}</td>
         <td>{{ i.method.name }}</td>
-        <td>{{ i.sender }}</td>
+        {% else %}
+        <td>{{ i.order_site.domain }}</td>
+        {% endif %}
         <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
         <td>{{ i.output_link }}</td>
-        <td><i class="status-{{ i.status }}"></i></td>
+        <td><p style="display: none">{{ i.get_status_display }}</p><i class="status-{{ i.status }}"></i></td>
+        {% if user.customer.account_type == "TRADER" %}
         <td>
             <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#basicModal{{i.id}}" type="button"><i
                     class="bi bi-credit-card"></i></button>
             <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderConfirm{{i.id}}" type="button"><i class="bi bi-x-lg"></i></button>
         </td>
+        {% else %}
+        <td>{{ i.client_id }}</td>
+        <td>{{ i.external_id }}</td>
+        <td>{{ i.client_contact }}</td>
+        {% endif %}
     </tr>
 
     <div class="modal fade" id="basicModal{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
@@ -195,19 +321,28 @@
     {% else %}
     <tr>
         <td>{{ i.id }}</td>
-        <td>{{ i.created.date }}<br>{{ i.created.time }}</td>
+        <td>{% time_date i.created user.customer.time_zone %}<br>{% time_hours i.created user.customer.time_zone %}</td>
         <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
         </td>
         <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        {% if user.customer.account_type == "TRADER" %}
         <td>{{ i.input_link.method.name }}</td>
         <td>{{ i.method.name }}</td>
-        <td>{{ i.sender }}</td>
+        {% else %}
+        <td>{{ i.order_site.domain }}</td>
+        {% endif %}
         <td>${% divide i.output_amount i.output_link.currency.denomination %}</td>
         <td>{{ i.output_link }}</td>
-        <td><i class="status-{{ i.status }}"></i></td>
+        <td><p style="display: none">{{ i.get_status_display }}</p><i class="status-{{ i.status }}"></i></td>
+        {% if user.customer.account_type == "TRADER" %}
         <td>
             <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
         </td>
+        {% else %}
+        <td>{{ i.client_id }}</td>
+        <td>{{ i.external_id }}</td>
+        <td>{{ i.client_contact }}</td>
+        {% endif %}
     </tr>
     {% endif %}
     {% endfor %}
@@ -258,6 +393,180 @@
                     console.error('Error:', error);
                 });
         }
+</script>
+
+{% if user.customer.account_type == "TRADER" %}
+<script>
+        $(document).ready(function () {
+            // Обработчик изменения фильтров
+            $("select, input").change(function () {
+                applyFilters();
+            });
+
+            // Функция применения фильтров
+            function applyFilters() {
+                var sideFilter = $("#side-filter").val();
+                var input_amountFrom = $("#input_amount-from").val();
+                var input_amountTo = $("#input_amount-to").val();
+                var bankFilter = $("#bank-filter").val();
+                var cardFilter = $("#card-filter").val();
+                var output_amountFrom = $("#output_amount-from").val();
+                var output_amountTo = $("#output_amount-to").val();
+                var currencyFilter = $("#currency-filter").val();
+                var statusFilter = $("#status-filter").val();
+
+                // Применяем фильтры
+                $("#filtered-data tr").each(function () {
+                var showRow = true;
+                var cells = $(this).find("td");
+
+                if (sideFilter && cells.eq(2).text() !== sideFilter) {
+                    showRow = false;
+                }
+
+                var amount = parseFloat($(this).find("td:eq(3)").text().replace('$', '').replace(',', ''));
+                if (input_amountFrom && amount < parseFloat(input_amountFrom)) {
+                    showRow = false;
+                }
+
+                if (input_amountTo && amount > parseFloat(input_amountTo)) {
+                    showRow = false;
+                }
+
+                if (bankFilter && cells.eq(4).text() !== bankFilter) {
+                    showRow = false;
+                }
+
+                if (cardFilter && cells.eq(5).text() !== cardFilter) {
+                    showRow = false;
+                }
+
+                var amount = parseFloat($(this).find("td:eq(6)").text().replace('$', '').replace(',', ''));
+                if (output_amountFrom && amount < parseFloat(output_amountFrom)) {
+                    showRow = false;
+                }
+
+                if (output_amountTo && amount > parseFloat(output_amountTo)) {
+                    showRow = false;
+                }
+
+                if (currencyFilter && cells.eq(7).text() !== currencyFilter) {
+                    showRow = false;
+                }
+
+                if (statusFilter && cells.eq(8).text().indexOf(statusFilter) === -1) {
+                    showRow = false;
+                }
+
+                // Показываем или скрываем строку
+                $(this).toggle(showRow);
+            });
+            }
+        });
+    </script>
+{% else %}
+<script>
+        $(document).ready(function () {
+            // Обработчик изменения фильтров
+            $("select, input").change(function () {
+                applyFilters();
+            });
+
+            // Функция применения фильтров
+            function applyFilters() {
+                var sideFilter = $("#side-filter").val();
+                var input_amountFrom = $("#input_amount-from").val();
+                var input_amountTo = $("#input_amount-to").val();
+                var siteFilter = $("#site-filter").val();
+                var output_amountFrom = $("#output_amount-from").val();
+                var output_amountTo = $("#output_amount-to").val();
+                var currencyFilter = $("#currency-filter").val();
+                var statusFilter = $("#status-filter").val();
+                var clientFilter = $("#client_id").val();
+                var externalFilter = $("#external_id").val();
+                var contactFilter = $("#cliebt_contact").val();
+
+                // Применяем фильтры
+                $("#filtered-data tr").each(function () {
+                var showRow = true;
+                var cells = $(this).find("td");
+
+                if (sideFilter && cells.eq(2).text() !== sideFilter) {
+                    showRow = false;
+                }
+
+                var amount = parseFloat($(this).find("td:eq(3)").text().replace('$', '').replace(',', ''));
+                if (input_amountFrom && amount < parseFloat(input_amountFrom)) {
+                    showRow = false;
+                }
+
+                if (input_amountTo && amount > parseFloat(input_amountTo)) {
+                    showRow = false;
+                }
+
+                if (siteFilter && cells.eq(4).text() !== siteFilter) {
+                    showRow = false;
+                }
+
+                var amount = parseFloat($(this).find("td:eq(5)").text().replace('$', '').replace(',', ''));
+                if (output_amountFrom && amount < parseFloat(output_amountFrom)) {
+                    showRow = false;
+                }
+
+                if (output_amountTo && amount > parseFloat(output_amountTo)) {
+                    showRow = false;
+                }
+
+                if (currencyFilter && cells.eq(6).text() !== currencyFilter) {
+                    showRow = false;
+                }
+
+                if (statusFilter && cells.eq(7).text().indexOf(statusFilter) === -1) {
+                    showRow = false;
+                }
+
+                if (clientFilter && cells.eq(8).text().indexOf(clientFilter) === -1) {
+                    showRow = false;
+                }
+
+                if (externalFilter && cells.eq(9).text().indexOf(externalFilter) === -1) {
+                    showRow = false;
+                }
+
+                if (contactFilter && cells.eq(10).text().indexOf(contactFilter) === -1) {
+                    showRow = false;
+                }
+
+                // Показываем или скрываем строку
+                $(this).toggle(showRow);
+            });
+            }
+        });
+    </script>
+{% endif %}
+
+<script>
+    document.getElementById("searchInput").addEventListener("input", function() {
+        const filter = this.value.toLowerCase();
+        const table = document.getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            let rowContainsFilter = false;
+
+            for (let j = 0; j < cells.length; j++) {
+                const cellText = cells[j].innerText.toLowerCase();
+
+                if (cellText.includes(filter)) {
+                    rowContainsFilter = true;
+                    break;
+                }
+            }
+
+            rows[i].style.display = rowContainsFilter ? "" : "none";
+        }
+    });
 </script>
 
 

@@ -37,16 +37,18 @@ class TransactionAdmin(admin.ModelAdmin):
 
 class OrderAdmin(admin.ModelAdmin):
     # change_list_template = 'admin/orders.html'
-    list_display = ('id', 'created', 'sender', 'order_site', 'input_amount', 'currency', 'status')
+    list_display = ('id', 'created', 'sender', 'order_site', 'amount_counted', 'currency', 'status')
 
     def currency(self, obj):
-        return obj.output_link.currency.ticker
+        return obj.input_link.currency.ticker if obj.input_link else ''
+
+    def amount_counted(self, obj):
+        return obj.input_amount/obj.input_link.currency.denomination if obj.input_link else 0
 
 
 class StatisticsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'customer_type', 'sender', 'site', 'customer_status', 'currency', 'amount', 'type', 'status', 'created')
+    list_display = ('id', 'customer_type', 'sender', 'site', 'customer_status', 'currency', 'amount_counted', 'type', 'status', 'created')
     list_filter = ('sender__account_type', 'site', 'sender__account_status', 'link__currency__name', 'type', 'status', 'created')
-    search_fields = ['sender']
 
     actions = ["export_csv"]
 
@@ -74,6 +76,9 @@ class StatisticsAdmin(admin.ModelAdmin):
 
     def site(self, obj):
         return obj.link.currency.denomination
+
+    def amount_counted(self, obj):
+        return obj.amount/obj.link.currency.denomination
 
     def customer_type(self, obj):
         return obj.sender.account_type

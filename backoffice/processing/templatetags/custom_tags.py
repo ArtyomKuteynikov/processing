@@ -1,3 +1,5 @@
+import datetime
+
 from django import template
 
 register = template.Library()
@@ -26,7 +28,19 @@ def percent(a, b):
 def zeros(a):
     if not a:
         return 0
-    return a
+    return round(a, 2)
+
+
+@register.simple_tag
+def time_date(a, b):
+    final = a + datetime.timedelta(hours=abs(b)) if b > 0 else a - datetime.timedelta(hours=abs(b))
+    return final.strftime("%d.%m.%Y")
+
+
+@register.simple_tag
+def time_hours(a, b):
+    final = a + datetime.timedelta(hours=abs(b)) if b > 0 else a - datetime.timedelta(hours=abs(b))
+    return final.strftime("%H:%M")
 
 
 @register.simple_tag

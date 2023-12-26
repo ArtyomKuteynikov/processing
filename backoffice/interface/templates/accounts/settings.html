@@ -360,6 +360,35 @@
             $('#accountBlock').modal('show');
         });
     });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkbox = document.getElementById('traderStatus');
+
+        checkbox.addEventListener('change', function () {
+            // Отправка запроса при изменении состояния чекбокса
+            const isChecked = checkbox.checked;
+            if (!isChecked) {
+                // Отправить запрос на отключение 2FA
+                fetch('/trader/inactive/', {
+                    method: 'GET',
+                    // Дополнительные параметры запроса, если необходимо
+                }).then(response => {
+                        console.error('Отключено');
+                }).catch(error => {
+                    console.error('Ошибка при выполнении запроса:', error);
+                });
+            } else {
+            fetch('/trader/active/', {
+                    method: 'GET',
+                    // Дополнительные параметры запроса, если необходимо
+                }).then(response => {
+                        console.error('Отключено');
+                }).catch(error => {
+                    console.error('Ошибка при выполнении запроса:', error);
+                });
+            }
+        });
+    });
 </script>
 
 {% endblock %}

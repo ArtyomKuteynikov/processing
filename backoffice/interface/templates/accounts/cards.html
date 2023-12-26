@@ -134,10 +134,8 @@
                 </button>
             </div>
             <div style="display: flex;padding: 2%">
-                <input class="form-control" id="search" type="text" name="query" placeholder="Поиск"
+                <input class="form-control" id="searchInput" type="text" name="query" placeholder="Поиск"
                        title="Enter search keyword">
-                <button class="btn btn-light" type="submit" title="Search"
-                        onclick="search(document.getElementById('search').value)"><i class="bi bi-search"></i></button>
             </div>
         </div>
         <table class="table">
@@ -153,11 +151,11 @@
             </tr>
             <tr>
                 <th scope="col">Мин. сумма</th>
-                <th scope="col">На операцию</th>
+                <th scope="col">Макс. сумма</th>
                 <th scope="col">В сутки</th>
                 <th scope="col">В месяц</th>
                 <th scope="col">Мин. сумма</th>
-                <th scope="col">На операцию</th>
+                <th scope="col">Макс. сумма</th>
                 <th scope="col">В сутки</th>
                 <th scope="col">В месяц</th>
             </tr>
@@ -212,4 +210,28 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById("searchInput").addEventListener("input", function() {
+        const filter = this.value.toLowerCase();
+        const table = document.getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            let rowContainsFilter = false;
+
+            for (let j = 0; j < cells.length; j++) {
+                const cellText = cells[j].innerText.toLowerCase();
+
+                if (cellText.includes(filter)) {
+                    rowContainsFilter = true;
+                    break;
+                }
+            }
+
+            rows[i].style.display = rowContainsFilter ? "" : "none";
+        }
+    });
+</script>
 {% endblock %}

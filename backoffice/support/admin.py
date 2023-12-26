@@ -16,7 +16,7 @@ class FAQAdmin(admin.ModelAdmin):
 
 
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ['client', 'priority', 'unread_messages']
+    list_display = ['id', 'client', 'priority', 'unread_messages']
     inlines = [TicketMessageInline]
 
     def get_queryset(self, request):

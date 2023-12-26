@@ -1,3 +1,5 @@
+import codecs
+import csv
 import datetime
 import time
 import uuid
@@ -12,7 +14,8 @@ import pyotp
 from .forms import Step1Form, LoginForm, OTPForm, Reset1Form, Reset2Form, RequestForm, MerchantForm, SupportForm, \
     SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm, KYCForm, \
     WebsitesForm, TelegramForm, AccountSettings
-from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits, Notifications, CustomerDocument, Websites, WebsitesCategories
+from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, \
+    CardsLimits, Notifications, CustomerDocument, Websites, WebsitesCategories
 from order.models import Transaction, Order
 from wallet.models import Balance, Withdrawal
 from support.models import Ticket, FAQ, TicketMessage
@@ -22,7 +25,7 @@ import redis
 import qrcode
 from interface.captcha import grecaptcha_verify
 from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.core.cache import cache
 from .utils import send_email, send_tg, handle_uploaded_file
 from passlib.context import CryptContext
@@ -417,8 +420,18 @@ def index(request):
 
 @login_required
 def transactions_view(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
     balances = Balance.objects.filter(account=request.user).all()
-    transactions = Transaction.objects.filter(Q(sender=request.user) | Q(receiver=request.user)).all()
+    transactions = Transaction.objects.filter(
+        (Q(sender=request.user) | Q(receiver=request.user)) & Q(created__range=[start_date, end_date])).all().order_by(
+        '-created')
+    sites = list(set([i.site.domain for i in transactions if i.site]))
+    links = list(set([i.link.__str__() for i in transactions if i.link]))
+    types = list(set([i.get_type_display() for i in transactions if i.type]))
+    statuses = list(set([i.get_status_display() for i in transactions if i.status]))
     address = DEPOSIT_ADDRESS
     if Customer.objects.filter(user_ptr=request.user).first():
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
@@ -427,28 +440,65 @@ def transactions_view(request):
     currency = Currency.objects.get(ticker='USDT')
     network = Networks.objects.get(short_name='TRC20')
     link = Links.objects.get(currency=currency, network=network)
-    if request.user.customer.account_type == 'TRADER':
-        form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
-                              max_amount=(request.user.customer.balance_set.filter(
-                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
-                                  balance_link=link).first() else 0) / link.currency.denomination)
-        max_deposit = Settings.objects.first().trader_deposit_limit
-    else:
-        form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
-                              max_amount=(request.user.customer.balance_set.filter(
-                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
-                                  balance_link=link).first() else 0) / link.currency.denomination)
-        max_deposit = Settings.objects.first().merchant_deposit
+    try:
+        if request.user.customer.account_type == 'TRADER':
+            form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
+                                  max_amount=(request.user.customer.balance_set.filter(
+                                      balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                      balance_link=link).first() else 0) / link.currency.denomination)
+        else:
+            form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
+                                  max_amount=(request.user.customer.balance_set.filter(
+                                      balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                      balance_link=link).first() else 0) / link.currency.denomination)
+    except:
+        form = WithdrawalForm()
     return render(request, 'accounts/transactions.html',
-                  {'transactions': transactions[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
-                   'form': form})
+                  {'transactions': transactions, 'balances': balances, 'address': address, 'max_amount': max_amount,
+                   'form': form, 'sites': sites, 'links': links, 'types': types, 'statuses': statuses, 'start': start,
+                   'finish': end})
+
+
+@login_required
+def transactions_csv(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
+    transactions = Transaction.objects.filter(
+        (Q(sender=request.user) | Q(receiver=request.user)) & Q(created__range=[start_date, end_date])).all()
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="transactions_report.csv"'
+    response.write(codecs.BOM_UTF8.decode('utf-8'))
+    writer = csv.writer(response)
+    writer.writerow(['ID', 'Дата и время', 'Сайт', 'Сумма', 'Валюта', 'Тип транзакции', 'Статус', 'Описание'])
+
+    for obj in transactions:
+        writer.writerow(
+            [obj.id, obj.created, obj.site.domain if obj.site else '', obj.amount / obj.link.currency.denomination,
+             obj.link.__str__(),
+             obj.get_type_display(), obj.get_status_display(), obj.category])
+
+    return response
 
 
 @login_required
 def orders_view(request):
-    TIME_LIMIT = Settings.objects.first().order_life
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
     balances = Balance.objects.filter(account=request.user).all()
-    orders = Order.objects.filter(Q(sender=request.user) | Q(trader=request.user)).all().order_by('-created')
+    orders = Order.objects.filter(
+        (Q(sender=request.user) | Q(trader=request.user)) & Q(created__range=[start_date, end_date])).all().order_by(
+        '-created')
+    banks = list(set([i.input_link.method.name for i in orders if i.input_link]))
+    cards = list(set([i.method.name for i in orders if i.method]))
+    sites = list(set([i.order_site.domain for i in orders if i.order_site]))
+    output_links = list(set([i.output_link.__str__() for i in orders if i.output_link]))
+    statuses = list(set([i.get_status_display() for i in orders if i.status]))
     address = DEPOSIT_ADDRESS
     if Customer.objects.filter(user_ptr=request.user).first():
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
@@ -457,18 +507,54 @@ def orders_view(request):
     currency = Currency.objects.get(ticker='USDT')
     network = Networks.objects.get(short_name='TRC20')
     link = Links.objects.get(currency=currency, network=network)
-    if request.user.customer.account_type == 'TRADER':
-        form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
-                              max_amount=(request.user.customer.balance_set.filter(
-                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
-                                  balance_link=link).first() else 0) / link.currency.denomination)
-    else:
-        form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
-                              max_amount=(request.user.customer.balance_set.filter(
-                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
-                                  balance_link=link).first() else 0) / link.currency.denomination)
+    try:
+        if request.user.customer.account_type == 'TRADER':
+            form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
+                                  max_amount=(request.user.customer.balance_set.filter(
+                                      balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                      balance_link=link).first() else 0) / link.currency.denomination)
+        else:
+            form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
+                                  max_amount=(request.user.customer.balance_set.filter(
+                                      balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                      balance_link=link).first() else 0) / link.currency.denomination)
+    except:
+        form = WithdrawalForm()
     return render(request, 'accounts/orders.html',
-                  {'orders': orders, 'balances': balances, 'address': address, 'max_amount': max_amount, 'form': form})
+                  {'orders': orders, 'start': start, 'finish': end, 'balances': balances, 'address': address,
+                   'max_amount': max_amount, 'form': form, 'banks': banks, 'cards': cards, 'sites': sites,
+                   'output_links': output_links, 'statuses': statuses})
+
+
+@login_required
+def orders_csv(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
+    orders = Order.objects.filter(
+        (Q(sender=request.user) | Q(trader=request.user)) & Q(created__range=[start_date, end_date])).all()
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="orders_report.csv"'
+    response.write(codecs.BOM_UTF8.decode('utf-8'))
+    writer = csv.writer(response)
+    if request.user.customer.account_type == "TRADER":
+        writer.writerow(
+            ['ID', 'Дата и время', 'Тип ордера', 'Входящая сумма', 'Банк', 'Карта', 'От кого', 'Исходящая сумма',
+             'Валюта', 'Статус'])
+    else:
+        writer.writerow(
+            ['ID', 'Дата и время', 'Тип ордера', 'Входящая сумма', 'Исходящая сумма', 'Валюта', 'Статус', 'Client ID',
+             'External ID', 'Контакт клиента'])
+    for obj in orders:
+        writer.writerow([obj.id, obj.created, obj.side,
+                         obj.input_amount / obj.input_link.currency.denomination if obj.input_link else 0,
+                         obj.output_amount / obj.output_link.currency.denomination, obj.output_link.__str__(),
+                         obj.get_status_display(), obj.client_id, obj.external_id, obj.client_contact])
+
+    return response
 
 
 def order_start(request, order_id):
@@ -493,7 +579,11 @@ def order_start(request, order_id):
             traders = TraderExchangeDirections.objects.filter(direction=direction, input=True).all()
         else:
             traders = TraderExchangeDirections.objects.filter(direction=direction, output=True).all()
-        traders = [i for i in traders if i.trader.verification_status().lower() == 'verified' and i.trader.status.lower() == 'active' and i.trader.account_status.lower() == 'active' and (Balance.objects.filter(account=i.trader, balance_link=order.output_link).first().amount if Balance.objects.filter(account=i.trader, balance_link=order.output_link).first() else 0) > order.output_amount]
+        traders = [i for i in traders if
+                   i.trader.verification_status().lower() == 'verified' and i.trader.status.lower() == 'active' and i.trader.account_status.lower() == 'active' and (
+                       Balance.objects.filter(account=i.trader,
+                                              balance_link=order.output_link).first().amount if Balance.objects.filter(
+                           account=i.trader, balance_link=order.output_link).first() else 0) > order.output_amount]
         # TODO: сделать так чтобы карты проверялись и выдавались только трейдеры с картами которые еще не певысили лимиты
         '''trader_cards = []
         for trader in traders:
@@ -512,11 +602,11 @@ def order_start(request, order_id):
         if not traders:
             order.status = 4
             order.save()
-            merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
-            merchant_balance.amount = merchant_balance.amount + order.output_amount
-            merchant_balance.frozen = merchant_balance.frozen - order.output_amount
-            merchant_balance.save()
             if order.side == 'OUT':
+                merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
+                merchant_balance.amount = merchant_balance.amount + order.output_amount
+                merchant_balance.frozen = merchant_balance.frozen - order.output_amount
+                merchant_balance.save()
                 transaction = Transaction.objects.get(other_id_1=order.id)
                 transaction.status = 4
                 transaction.finished = True
@@ -624,7 +714,8 @@ def realise_crypro(request, order_id):
         transaction.save()
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
-        merchant_balance.frozen = merchant_balance.frozen - order.output_amount - order.output_amount*order.trader.interest_rate/100
+        merchant_balance.frozen = merchant_balance.frozen - order.output_amount
+        merchant_balance.amount = merchant_balance.amount - order.output_amount * order.trader.interest_rate / 100
         trader_balance.amount = trader_balance.amount + order.output_amount
         merchant_balance.save()
         trader_balance.save()
@@ -701,7 +792,7 @@ def realise_crypro_trader(request, order_id):
             receiver_id=order.sender_id,
             site_id=order.order_site_id,
             link_id=order.output_link_id,
-            amount=order.output_amount*order.trader.interest_rate/100,
+            amount=order.output_amount * order.trader.interest_rate / 100,
             finished=True,
             type=6,
             status=1,
@@ -714,8 +805,8 @@ def realise_crypro_trader(request, order_id):
         transaction_commission.save()
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
-        merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount*order.trader.interest_rate/100
-        trader_balance.amount = trader_balance.amount - order.output_amount# + order.output_amount*order.trader.interest_rate/100
+        merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount * order.trader.interest_rate / 100
+        trader_balance.amount = trader_balance.amount - order.output_amount  # + order.output_amount*order.trader.interest_rate/100
         merchant_balance.save()
         trader_balance.save()
         notification = Notifications(
@@ -863,9 +954,12 @@ def order_status(request, order_id):
 
 @login_required
 def withdrawals_view(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
     balances = Balance.objects.filter(account=request.user).all()
-    withdrawals = Withdrawal.objects.filter(customer=request.user.customer).all()
-    print(request.user.customer.can_withdraw())
+    withdrawals = Withdrawal.objects.filter(customer=request.user, created__range=[start_date, end_date]).all()
     address = DEPOSIT_ADDRESS
     if Customer.objects.filter(user_ptr=request.user).first():
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
@@ -874,19 +968,43 @@ def withdrawals_view(request):
     currency = Currency.objects.get(ticker='USDT')
     network = Networks.objects.get(short_name='TRC20')
     link = Links.objects.get(currency=currency, network=network)
-    if request.user.customer.account_type == 'TRADER':
-        form = WithdrawalForm(min_amount=Settings.objects.first().min_limit, max_amount=(request.user.customer.balance_set.filter(
-                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
-                                  balance_link=link).first() else 0)/link.currency.denomination)
-        max_deposit = Settings.objects.first().trader_deposit_limit
-    else:
-        form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min, max_amount=(request.user.customer.balance_set.filter(
-                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
-                                  balance_link=link).first() else 0)/link.currency.denomination)
-        max_deposit = Settings.objects.first().merchant_deposit
+    try:
+        if request.user.customer.account_type == 'TRADER':
+            form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
+                                  max_amount=(request.user.customer.balance_set.filter(
+                                      balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                      balance_link=link).first() else 0) / link.currency.denomination)
+        else:
+            form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
+                                  max_amount=(request.user.customer.balance_set.filter(
+                                      balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                      balance_link=link).first() else 0) / link.currency.denomination)
+    except:
+        form = WithdrawalForm()
     return render(request, 'accounts/withdrawals.html',
                   {'withdrawals': withdrawals[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
-                   'form': form, 'max_deposit': max_deposit})
+                   'form': form, 'start': start, 'finish': end})
+
+
+@login_required
+def withdrawal_csv(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
+    withdrawals = Withdrawal.objects.filter(customer=request.user.customer, created__range=[start_date, end_date]).all()
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="withdrawals_report.csv"'
+    response.write(codecs.BOM_UTF8.decode('utf-8'))
+    writer = csv.writer(response)
+    writer.writerow(['ID', 'Дата и время', 'Сумма', 'Адрес', 'Статус', 'Описание'])
+
+    for obj in withdrawals:
+        writer.writerow(
+            [obj.id, obj.created, obj.amount / obj.currency.currency.denomination if obj.currency else 0, obj.address,
+             obj.get_status_display(), obj.comment])
+
+    return response
 
 
 @login_required
@@ -896,34 +1014,37 @@ def statistics(request):
     aggregation_param = request.GET.get('groupby', 'days')
     start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
     end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
-    transactions = Transaction.objects.filter(Q(sender=request.user) | Q(receiver=request.user) & Q(created__range=[start_date, end_date]))
-    orders = Order.objects.filter(Q(sender=request.user) | Q(trader=request.user) & Q(created__range=[start_date, end_date]))
+    transactions = Transaction.objects.filter(
+        Q(sender=request.user) | Q(receiver=request.user) & Q(created__range=[start_date, end_date]))
+    orders = Order.objects.filter(
+        Q(sender=request.user) | Q(trader=request.user) & Q(created__range=[start_date, end_date]))
     if aggregation_param == 'days':
         transactions_aggregated = transactions.extra({'day': 'date(created)'}).values('day').annotate(
             total_transactions=Count('id'),
             successful_transactions=Count('id', filter=Q(status=2)),
             unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
-            avg_order_amount=Avg('amount')
         )
         orders_aggregated = orders.extra({'day': 'date(created)'}).values('day').annotate(
             total_orders=Count('id'),
             successful_orders=Count('id', filter=Q(status=3)),
             unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
-            avg_order_amount=Avg('output_amount')/100
+            avg_order_amount=Avg('output_amount') / 100
         )
         merged_data = []
-        for key, group in groupby(sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: x['day']),
-                                  key=lambda x: x['day']):
+        for key, group in groupby(
+                sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: x['day']),
+                key=lambda x: x['day']):
             combined_dict = {'param': key}
             for item in group:
                 combined_dict.update(item)
             merged_data.append(combined_dict)
     elif aggregation_param == 'cards':
-        orders_aggregated = orders.filter(trader=request.user.customer, side='IN').extra({'card': 'method_id'}).values('card').annotate(
+        orders_aggregated = orders.filter(trader=request.user.customer, side='IN').extra({'card': 'method_id'}).values(
+            'card').annotate(
             total_orders=Count('id'),
             successful_orders=Count('id', filter=Q(status=3)),
             unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
-            avg_order_amount=Avg('output_amount')/100
+            avg_order_amount=Avg('output_amount') / 100
         )
         merged_data = []
         for key, group in groupby(sorted(list(orders_aggregated), key=lambda x: str(x['card'])),
@@ -938,17 +1059,17 @@ def statistics(request):
             total_transactions=Count('id'),
             successful_transactions=Count('id', filter=Q(status=2)),
             unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
-            avg_order_amount=Avg('amount')
         )
         orders_aggregated = orders.extra({'site': 'order_site_id'}).values('site').annotate(
             total_orders=Count('id'),
             successful_orders=Count('id', filter=Q(status=3)),
             unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
-            avg_order_amount=Avg('output_amount')/100
+            avg_order_amount=Avg('output_amount') / 100
         )
         merged_data = []
-        for key, group in groupby(sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: str(x['site'])),
-                                  key=lambda x: str(x['site'])):
+        for key, group in groupby(
+                sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: str(x['site'])),
+                key=lambda x: str(x['site'])):
             if key and key != 'None':
                 if Websites.objects.filter(id=key).first():
                     combined_dict = {'param': Websites.objects.filter(id=key).first().domain}
@@ -957,7 +1078,104 @@ def statistics(request):
                     merged_data.append(combined_dict)
     else:
         merged_data = 0
-    return render(request, 'accounts/statistics.html', {'groupby': aggregation_param, 'start': start, 'finish': end, 'data': merged_data})
+    return render(request, 'accounts/statistics.html',
+                  {'groupby': aggregation_param, 'start': start, 'finish': end, 'data': merged_data})
+
+
+@login_required
+def statistics_csv(request):
+    start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
+    end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
+    aggregation_param = request.GET.get('groupby', 'days')
+    start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
+    end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
+    transactions = Transaction.objects.filter(
+        Q(sender=request.user) | Q(receiver=request.user) & Q(created__range=[start_date, end_date]))
+    orders = Order.objects.filter(
+        Q(sender=request.user) | Q(trader=request.user) & Q(created__range=[start_date, end_date]))
+    if aggregation_param == 'days':
+        transactions_aggregated = transactions.extra({'day': 'date(created)'}).values('day').annotate(
+            total_transactions=Count('id'),
+            successful_transactions=Count('id', filter=Q(status=2)),
+            unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
+        )
+        orders_aggregated = orders.extra({'day': 'date(created)'}).values('day').annotate(
+            total_orders=Count('id'),
+            successful_orders=Count('id', filter=Q(status=3)),
+            unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
+            avg_order_amount=Avg('output_amount') / 100
+        )
+        merged_data = []
+        for key, group in groupby(
+                sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: x['day']),
+                key=lambda x: x['day']):
+            combined_dict = {'param': key}
+            for item in group:
+                combined_dict.update(item)
+            merged_data.append(combined_dict)
+    elif aggregation_param == 'cards':
+        orders_aggregated = orders.filter(trader=request.user.customer, side='IN').extra({'card': 'method_id'}).values(
+            'card').annotate(
+            total_orders=Count('id'),
+            successful_orders=Count('id', filter=Q(status=3)),
+            unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
+            avg_order_amount=Avg('output_amount') / 100
+        )
+        merged_data = []
+        for key, group in groupby(sorted(list(orders_aggregated), key=lambda x: str(x['card'])),
+                                  key=lambda x: x['card']):
+            if Cards.objects.filter(id=key).first():
+                combined_dict = {'param': Cards.objects.filter(id=key).first().name}
+                for item in group:
+                    combined_dict.update(item)
+                merged_data.append(combined_dict)
+    elif aggregation_param == 'sites':
+        transactions_aggregated = transactions.extra({'site': 'site_id'}).values('site').annotate(
+            total_transactions=Count('id'),
+            successful_transactions=Count('id', filter=Q(status=2)),
+            unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
+        )
+        orders_aggregated = orders.extra({'site': 'order_site_id'}).values('site').annotate(
+            total_orders=Count('id'),
+            successful_orders=Count('id', filter=Q(status=3)),
+            unsuccessful_orders=Count('id', filter=Q(status=3, _negated=True)),
+            avg_order_amount=Avg('output_amount') / 100
+        )
+        merged_data = []
+        for key, group in groupby(
+                sorted(list(transactions_aggregated) + list(orders_aggregated), key=lambda x: str(x['site'])),
+                key=lambda x: str(x['site'])):
+            if key and key != 'None':
+                if Websites.objects.filter(id=key).first():
+                    combined_dict = {'param': Websites.objects.filter(id=key).first().domain}
+                    for item in group:
+                        combined_dict.update(item)
+                    merged_data.append(combined_dict)
+    else:
+        merged_data = []
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="statistics_report.csv"'
+
+    response.write(codecs.BOM_UTF8.decode('utf-8'))
+    writer = csv.writer(response)
+    writer.writerow(['День' if groupby == 'days' else 'Площадка' if groupby == 'sites' else 'Карта', 'Всего ордеров',
+                     'Успешных ордеров', 'Неуспешных ордеров', 'Всего ордеров', 'Успешных ордеров',
+                     'Неуспешных ордеров', 'Соотношение ордеров к транзакциям(%)', 'Средний чек ордера'])
+
+    for obj in merged_data:
+        writer.writerow([
+            obj['param'] if 'param' in obj else '',
+            obj['total_transactions'] if 'total_transactions' in obj else 0,
+            obj['successful_transactions'] if 'successful_transactions' in obj else 0,
+            obj['unsuccessful_transactions'] if 'unsuccessful_transactions' in obj else 0,
+            obj['total_orders'] if 'total_orders' in obj else 0,
+            obj['unsuccessful_orders'] if 'unsuccessful_orders' in obj else 0,
+            obj['unsuccessful_orders'] if 'unsuccessful_orders' in obj else 0,
+            round(obj['total_orders'] / obj['total_transactions'] * 100, 2) if 'total_transactions' in obj and 'total_orders' in obj else 0,
+            obj['avg_order_amount'] if 'avg_order_amount' in obj else 0
+        ])
+
+    return response
 
 
 @login_required
@@ -1014,7 +1232,10 @@ def settings(request):
     if request.method == 'POST':
         form = CustomerChangeForm(request.POST)
         customer = Customer.objects.get(id=request.user.id)
-        if (Customer.objects.filter(email=form.data['email']).first() and Customer.objects.filter(email=form.data['email']).first() != request.user.customer) or (Customer.objects.filter(phone=form.data['phone']).first() and Customer.objects.filter(phone=form.data['phone']).first() != request.user.customer):
+        if (Customer.objects.filter(email=form.data['email']).first() and Customer.objects.filter(
+                email=form.data['email']).first() != request.user.customer) or (
+                Customer.objects.filter(phone=form.data['phone']).first() and Customer.objects.filter(
+                phone=form.data['phone']).first() != request.user.customer):
             form.add_error(None, 'Такой email или номер телефона уже зарегистрирован')
         if form.is_valid():
             customer.email = form.data['email']
@@ -1366,3 +1587,7 @@ def send_otp_telegram(request):
     print(code)
     send_tg(telegram_id, msg_body)
     return JsonResponse({'status': True})
+
+
+def test(request):
+    return render(request, 'test.html')

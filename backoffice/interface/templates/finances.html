@@ -227,9 +227,11 @@
                     </div>
                     <div class="card col-xl-3"
                          style="align-content: center;display: flex;flex-wrap: wrap;flex-direction: row;justify-content: space-around;padding: 2%">
+                        {% if user.customer.account_type == "TRADER" %}
                         <button onclick="openDeposit()" class="btn btn-primary"
-                                style="color: #fff !important;max-height: 30px;" {% if user.customer.verification_status != 'Verified' and user.customer.account_type == "Trader" %} disabled {% endif %}>Пополнить
+                                style="color: #fff !important;max-height: 30px;" {% if user.customer.verification_status != 'Verified' %} disabled {% endif %}>Пополнить
                         </button>
+                        {% endif %}
                         <button onclick="openWithdrawal()" class="btn btn-primary"
                                 style="color: #fff !important;max-height: 30px;" {% if not user.customer.can_withdraw %} disabled {% endif %}>Вывести
                         </button>

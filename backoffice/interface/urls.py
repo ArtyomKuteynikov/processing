@@ -4,9 +4,13 @@ from .views import *
 urlpatterns = [
     path('', index, name='index'),
     path('transactions/', transactions_view, name='transactions'),
+    path('transactions/csv/', transactions_csv, name='transactions-csv'),
     path('orders/', orders_view, name='orders'),
+    path('orders/csv/', orders_csv, name='orders-csv'),
     path('withdrawals/', withdrawals_view, name='withdrawals'),
+    path('withdrawals/csv/', withdrawal_csv, name='withdrawals-csv'),
     path('statistics/', statistics, name='statistics'),
+    path('statistics/csv/', statistics_csv, name='statistics-csv'),
     path('websites/', websites, name='websites'),
     path('change-key/<int:site>', change_key, name='change-key'),
     path('website/<int:website_id>', website, name='website'),
@@ -56,4 +60,5 @@ urlpatterns = [
     path('trader/inactive/', trader_inactive, name='inactive'),
     path('subscribe/', subscribe, name='subscribe'),
     path('account-settings/', account_settings, name='account_settings'),
+    path('test/', test, name='test')
 ]
