@@ -108,6 +108,7 @@ class Order(models.Model):
     initials = models.CharField(max_length=128, null=True, blank=True)
     client_id = models.IntegerField()
     external_id = models.IntegerField()
+    client_contact = models.CharField(max_length=256, null=True, blank=True)
 
     class Meta:
         db_table = "order_order"

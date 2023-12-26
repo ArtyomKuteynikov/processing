@@ -1,7 +1,7 @@
 from django import forms
 from django_recaptcha.fields import ReCaptchaField
 from currency.models import Links, PaymentMethods
-from customer.models import Cards, CardsLimits, CustomerDocument, Websites
+from customer.models import Cards, CardsLimits, CustomerDocument, Websites, WebsitesCategories
 
 
 class WebsitesForm(forms.ModelForm):
@@ -67,10 +67,11 @@ class OTPForm(forms.Form):
 
 
 class RequestForm(forms.Form):
+    CATEGORIES = [(i.id, i.__str__) for i in WebsitesCategories.objects.all()]
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='Email', )
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='Телефон')
     website = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'https://example.com'}), label='Сайт-площадка')
-    comment = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Введите свой комментарий...'}), label='Комментарий')
+    comment = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Категория', choices=CATEGORIES)
     # captcha = ReCaptchaField(label='')
 
 
@@ -97,12 +98,31 @@ class SupportMessageForm(forms.Form):
 class CustomerChangeForm(forms.Form):
     email = forms.EmailField()
     phone = forms.CharField()
-    telegram = forms.CharField()
+
+
+class TelegramForm(forms.Form):
+    telegram_id = forms.IntegerField()
+
+
+class AccountSettings(forms.Form):
+    time_zone = forms.IntegerField()
 
 
 class WithdrawalForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        min_amount = kwargs.pop('min_amount', 0.01)
+        max_amount = kwargs.pop('max_amount', 10000)
+
+        super().__init__(*args, **kwargs)
+
+        self.fields['amount'] = forms.FloatField(
+            widget=forms.NumberInput(attrs={'placeholder': 'Сумма'}),
+            label='Сумма',
+            min_value=min_amount,
+            max_value=max_amount
+        )
     LINKS = [(i.id, i.__str__) for i in Links.objects.all()]
-    amount = forms.FloatField(widget=forms.NumberInput(attrs={'placeholder': 'Сумма'}), label='Сумма')
+    # amount = forms.FloatField(widget=forms.NumberInput(attrs={'placeholder': 'Сумма'}), label='Сумма')
     link = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Валюта', choices=LINKS)
     address = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Адрес'}), label='Адрес')
     comment = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Комментарий'}), label='Комментарий', required=False)

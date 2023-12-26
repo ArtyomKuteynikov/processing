@@ -1,7 +1,12 @@
+import csv
+
 from django.contrib import admin
 from django.db.models import Count, Sum, F
 from customer.models import Notifications
+from django.http import HttpResponse
+
 from .models import Transaction, Order, Statistics
+from interface.utils import send_tg
 
 
 class TransactionAdmin(admin.ModelAdmin):
@@ -23,6 +28,10 @@ class TransactionAdmin(admin.ModelAdmin):
                 category='input'
             )
             notification.save()
+            try:
+                send_tg(obj.sender.telegram_id, notification.body)
+            except:
+                pass
         super().save_model(request, obj, form, change)
 
 
@@ -35,12 +44,45 @@ class OrderAdmin(admin.ModelAdmin):
 
 
 class StatisticsAdmin(admin.ModelAdmin):
-    list_display = ['created', 'receiver', 'amount', 'link', 'category', 'status', 'counted',]
-    date_hierarchy = 'created'
-    list_filter = ('amount', )
+    list_display = ('id', 'customer_type', 'sender', 'site', 'customer_status', 'currency', 'amount', 'type', 'status', 'created')
+    list_filter = ('sender__account_type', 'site', 'sender__account_status', 'link__currency__name', 'type', 'status', 'created')
+    search_fields = ['sender']
+
+    actions = ["export_csv"]
+
+    def export_csv(self, request, queryset):
+        # Prepare CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="transactions_report.csv"'
+
+        # Create CSV writer
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Customer Type', 'Customer', 'Site', 'Customer Status', 'Currency', 'Transaction Type', 'Transaction Status', 'Created'])
+
+        for obj in queryset:
+            writer.writerow([obj.id, obj.sender.account_type, obj.sender, obj.site, obj.sender.account_status,
+                             obj.link.currency.name, obj.get_type_display(), obj.get_status_display(), obj.created])
+
+        return response
+
+    export_csv.short_description = ".CSV"
+
+    def changelist_view(self, request, extra_context=None):
+        # Your existing code for filtering and grouping goes here
+
+        return super().changelist_view(request, extra_context=extra_context)
 
     def site(self, obj):
         return obj.link.currency.denomination
+
+    def customer_type(self, obj):
+        return obj.sender.account_type
+
+    def customer_status(self, obj):
+        return obj.sender.account_status
+
+    def currency(self, obj):
+        return obj.link.currency.name
 
     def has_add_permission(self, request):
         return False
@@ -50,28 +92,6 @@ class StatisticsAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
-
-    def changelist_view(self, request, extra_context=None):
-        response = super().changelist_view(
-            request,
-            extra_context=extra_context,
-        )
-        print(dir(request), request.path_info, request.read(), request.content_params, extra_context)
-        try:
-            qs = response.context_data['cl'].queryset
-        except (AttributeError, KeyError):
-            return response
-        print(qs)
-
-        metrics = {
-            'total': Count('id'),
-            'total_sales': Sum('amount'),
-        }
-        response.context_data['summary'] = list(
-            qs.annotate(**metrics).order_by('-created')
-        )
-
-        return response
 
 
 admin.site.register(Order, OrderAdmin)

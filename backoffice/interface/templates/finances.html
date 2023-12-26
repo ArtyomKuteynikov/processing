@@ -228,10 +228,10 @@
                     <div class="card col-xl-3"
                          style="align-content: center;display: flex;flex-wrap: wrap;flex-direction: row;justify-content: space-around;padding: 2%">
                         <button onclick="openDeposit()" class="btn btn-primary"
-                                style="color: #fff !important;max-height: 30px;" {% if user.customer.verification_status != 'Verified' %} disabled {% endif %}>Пополнить
+                                style="color: #fff !important;max-height: 30px;" {% if user.customer.verification_status != 'Verified' and user.customer.account_type == "Trader" %} disabled {% endif %}>Пополнить
                         </button>
                         <button onclick="openWithdrawal()" class="btn btn-primary"
-                                style="color: #fff !important;max-height: 30px;" {% if user.customer.verification_status != 'Verified' %} disabled {% endif %}>Вывести
+                                style="color: #fff !important;max-height: 30px;" {% if not user.customer.can_withdraw %} disabled {% endif %}>Вывести
                         </button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -262,12 +262,12 @@
             </div>
             <form method="post" action="{% url 'deposit' %}">
                 {% csrf_token %}
-                <input class="form-control" name="amount" max="{{ max_amount }}" type="number"
+                <input class="form-control" name="amount" max="{{ max_amount }}" type="number" step=".01"
                        placeholder="Сумма пополнения" required>
                 <div class="modal-footer">
 
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                    <button id="send" type="submit" class="btn btn-primary">Пополнил</button>
+                    <button id="send" type="submit" class="btn btn-primary">Пополнить</button>
 
                 </div>
             </form>

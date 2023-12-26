@@ -70,8 +70,11 @@ def ticker_update(redis_pool):
 
 async def market_update(redis_pool):
     while True:
-        pairs = set(await get_exchange_directions())
-        pairs = [pair for pair in pairs]
-        for pair in pairs:
-            await current_price(pair[0], pair[1], redis_pool)
-        await asyncio.sleep(60)
+        try:
+            pairs = set(await get_exchange_directions())
+            pairs = [pair for pair in pairs]
+            for pair in pairs:
+                await current_price(pair[0], pair[1], redis_pool)
+            await asyncio.sleep(60)
+        except Exception as e:
+            print(e)

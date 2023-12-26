@@ -76,11 +76,49 @@
         <td>{{ i.output_link }}</td>
         <td><i class="status-{{ i.status }}"></i></td>
         <td>
-            <a onclick="confirmOrder('{{ i.id }}');" class="btn btn-light"><i class="bi bi-check-lg"></i></a>
-            <a onclick="incorrectOrder('{{ i.id }}')" class="btn btn-danger"><i class="bi bi-x-lg"></i></a>
+            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#confirmOrderConfirm{{i.id}}" type="button"><i class="bi bi-check-lg"></i></button>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#incorrectOrderConfirm{{i.id}}" type="button"><i class="bi bi-x-lg"></i></button>
             <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
         </td>
     </tr>
+
+    <div class="modal fade" id="confirmOrderConfirm{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтвердите ордер</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Проверьте пришла ли вам финальная сумма полностью, только после этого нажмине "Подтвердить"
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <a onclick="confirmOrder('{{ i.id }}');" type="submit" class="btn btn-primary">Подтвердить</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div class="modal fade" id="incorrectOrderConfirm{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отменить ордер</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Если средства не пришли или пришло неверное количество - нажмите "Отменить ордер"
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <a onclick="incorrectOrder('{{ i.id }}')" type="submit" class="btn btn-primary">Отменить ордер</a>
+            </div>
+        </div>
+    </div>
+</div>
     {% elif i.side == 'OUT' and i.status == 1 %}
     <tr style="background-color: #FFD2D1;">
         <td>{{ i.id }}</td>
@@ -97,7 +135,7 @@
         <td>
             <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#basicModal{{i.id}}" type="button"><i
                     class="bi bi-credit-card"></i></button>
-            <a onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger"><i class="bi bi-x-lg"></i></a>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderConfirm{{i.id}}" type="button"><i class="bi bi-x-lg"></i></button>
         </td>
     </tr>
 
@@ -129,12 +167,31 @@
                     <button style="width: 45%" class="btn btn-info" onclick="paidOrder('{{ i.id }}')">
                         <span>Я перевел деньги</span>
                     </button>
-                    <a style="width: 45%" onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger">Деньги не переводил, отмена</a>
+                    <a style="width: 45%" onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger">Деньги не
+                        переводил, отмена</a>
                 </div>
 
             </div>
         </div>
     </div>
+    <div class="modal fade" id="cancelOrderConfirm{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отменить ордер</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены что хотите отменить ордер?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <a onclick="cancelOrder('{{ i.id }}')" type="submit" class="btn btn-primary">Отменить ордер</a>
+            </div>
+        </div>
+    </div>
+</div>
     {% else %}
     <tr>
         <td>{{ i.id }}</td>

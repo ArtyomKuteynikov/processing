@@ -1,12 +1,15 @@
 import datetime
 import uuid
 
+import pyotp
 from django.db import models
 from django.db.models import Sum, F
 from django.urls import reverse
 from django.contrib.auth.models import User
 
 from currency.models import Currency, PaymentMethods, ExchangeDirection
+from django.utils import timezone
+from django.core.cache import cache
 
 # from wallet.models import Balance
 
@@ -77,12 +80,62 @@ REQUEST_STATUSES = [
 ]
 
 
+def default_expiry():
+    return timezone.now() + datetime.timedelta(days=Settings.objects.first().invite_expiration)
+
+
+class Settings(models.Model):
+    trader_deposit_limit = models.IntegerField(verbose_name="Депозит трейдер (лимит)")
+    trader_limit = models.IntegerField(verbose_name="Кол-во заявок трейдера на вывод в сутки")
+    min_limit = models.IntegerField(verbose_name="Лимит трейдера на минимальную сумму вывода")
+    fix_commission = models.IntegerField(verbose_name="Фикс % трейдер")
+
+    merchant_deposit = models.IntegerField(verbose_name="Депозит мерчант (лимит)")
+    commission_in = models.IntegerField(verbose_name="Комиссия системы инвойс клиентам")
+    commission_out = models.IntegerField(verbose_name="Комиссия системы вывод")
+    withdrawals_limit = models.IntegerField(verbose_name="Кол-во заявок мерчанта на вывод в сутки")
+    withdrawal_min = models.IntegerField(verbose_name="Лимит мерчанта на минимальную сумму вывода")
+    new_merchants_limit = models.IntegerField(verbose_name="Лимиты для новых мерчантов")
+    order_life = models.IntegerField(verbose_name="Срок действия ордера (для клиента)")
+
+    max_registration_tries = models.IntegerField(verbose_name='Кол-во попыток ввода кода подтверждения')
+    withdrawal_block = models.IntegerField(verbose_name='Блок на вывод средств после смены email/телефон')
+    phone_restriction = models.IntegerField(verbose_name="Запрет на использование “освобожденного телефона/email")
+    max_ip_requests = models.IntegerField(verbose_name="Кол-во запросов с одного ip")
+    max_phone_retries = models.IntegerField(verbose_name="Кол-во регистраций с одного телефона")
+    invite_expiration = models.IntegerField(verbose_name="Срок действия инвайт кода")
+
+    website_verification = models.BooleanField(verbose_name="Обязательность верификации сайта мерчанта")
+    dns_salt = models.CharField(verbose_name="Соль для кода верификации для TXT в DNS ")
+
+    min_traders = models.IntegerField(verbose_name="Минимальное количество активных трейдеров")
+    min_amounts = models.IntegerField(verbose_name="Минимальные остатки по лимитам активных трейдеров (в USDT)")
+    max_limit = models.IntegerField(
+        verbose_name="Максимальный процент отношения общей суммы заявок за последние 10 минут к остаткам по лимитам всех активных трейдеров (в %)")
+    logout_in = models.IntegerField(verbose_name="Разлогинивать через")
+
+    trader_inactive_push = models.IntegerField(verbose_name="Пуш уведомление о “засыпании” трейдера")
+    inactive_email = models.IntegerField(verbose_name="Email уведомление о неактивности")
+
+    def __str__(self):
+        return 'Processing settings'
+
+
+class WebsitesCategories(models.Model):
+    name = models.CharField(max_length=128)
+
+    def __str__(self):
+        return self.name
+
+
 class Request(models.Model):
     phone = models.CharField(max_length=256)
     email = models.EmailField(blank=False, unique=True)
     site = models.CharField(max_length=256)
-    category = models.CharField(max_length=256)
+    category = models.ForeignKey(WebsitesCategories, on_delete=models.CASCADE, null=True, blank=True,
+                                 verbose_name='Категория')
     status = models.IntegerField(choices=REQUEST_STATUSES)
+    expiry = models.DateField(default=default_expiry)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -92,9 +145,18 @@ class Request(models.Model):
         verbose_name = 'Request'
         verbose_name_plural = 'Requests'
 
+    def __str__(self):
+        return f'Заявка №{self.id}'
+
 
 class Admin(User):
     account_type = models.CharField(max_length=256, choices=[('ADMIN', 'Admin')])
+
+
+class MerchantsCategories(models.Model):
+    name = models.CharField(max_length=128)
+    fees_in = models.FloatField()
+    fees_out = models.FloatField()
 
 
 class Customer(User):
@@ -105,6 +167,7 @@ class Customer(User):
     account_type = models.CharField(max_length=256, choices=ACCOUNT_TYPES)
     account_status = models.CharField(max_length=256, choices=ACCOUNT_STATUSES)
     status = models.CharField(max_length=256, choices=CUSTOMER_STATUSES)
+    category = models.ForeignKey(MerchantsCategories, on_delete=models.CASCADE, blank=True, null=True)
     # email = models.EmailField(blank=False, unique=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     telegram_id = models.CharField(max_length=128, blank=True, null=True)
@@ -142,6 +205,21 @@ class Customer(User):
 
     def unread_notifications(self):
         return len(self.notifications_set.filter(read=False).all())
+
+    def uri_2fa(self):
+        return pyotp.totp.TOTP(self.value_2fa).provisioning_uri(
+            name=self.email,
+            issuer_name='Processing')
+
+    def can_withdraw(self):
+        if cache.get(f'restriction:{self.email}'):
+            return False
+        if self.account_type == 'MERCHANT':
+            return Settings.objects.first().withdrawals_limit > len(self.withdrawal_set.filter(created__range=[datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()]).all())
+        else:
+            if self.verification_status() != 'Verified':
+                return False
+            return Settings.objects.first().trader_limit > len(self.withdrawal_set.filter(created__range=[datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()]).all())
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -209,18 +287,12 @@ class Merchants(Customer):
         verbose_name_plural = "Merchants"
 
 
-class WebsitesCategories(models.Model):
-    name = models.CharField(max_length=128)
-
-    def __str__(self):
-        return self.name
-
-
 class Websites(models.Model):
     merchant = models.ForeignKey(Customer, on_delete=models.CASCADE)
     domain = models.CharField(max_length=128, verbose_name='Домен')
     description = models.CharField(max_length=1024, verbose_name='Описание')
-    category = models.ForeignKey(WebsitesCategories, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Категория')
+    category = models.ForeignKey(WebsitesCategories, on_delete=models.CASCADE, null=True, blank=True,
+                                 verbose_name='Категория')
     status = models.IntegerField(choices=WEBSITES_STATUSES, default=0)
     payment_method = models.IntegerField(choices=PAYMENT_METHODS, default=0, verbose_name='Метод платежей')
     verified = models.IntegerField(choices=WEBSITES_VERIFICATION, default=0)
@@ -293,43 +365,6 @@ class TraderExchangeDirections(models.Model):
     direction = models.ForeignKey(ExchangeDirection, on_delete=models.CASCADE)
     input = models.BooleanField()
     output = models.BooleanField()
-
-
-class Settings(models.Model):
-    trader_deposit_limit = models.IntegerField(verbose_name="Депозит трейдер (лимит)")
-    trader_orders = models.IntegerField(verbose_name="Кол-во заявок трейдера на вывод в сутки")
-    min_limit = models.IntegerField(verbose_name="Лимит трейдера на минимальную сумму вывода")
-    fix_commission = models.IntegerField(verbose_name="Фикс % трейдер")
-
-    merchant_deposit = models.IntegerField(verbose_name="Депозит мерчант (лимит)")
-    commission_in = models.IntegerField(verbose_name="Комиссия системы инвойс клиентам")
-    commission_out = models.IntegerField(verbose_name="Комиссия системы вывод")
-    withdrawals_limit = models.IntegerField(verbose_name="Кол-во заявок мерчанта на вывод в сутки")
-    withdrawal_min = models.IntegerField(verbose_name="Лимит мерчанта на минимальную сумму вывода")
-    new_merchants_limit = models.IntegerField(verbose_name="Лимиты для новых мерчантов")
-    order_life = models.IntegerField(verbose_name="Срок действия ордера (для клиента)")
-
-    max_registration_tries = models.IntegerField(verbose_name='Кол-во попыток ввода кода подтверждения')
-    withdrawal_block = models.IntegerField(verbose_name='Блок на вывод средств после смены email/телефон')
-    phone_restriction = models.IntegerField(verbose_name="Запрет на использование “освобожденного телефона/email")
-    max_ip_requests = models.IntegerField(verbose_name="Кол-во запросов с одного ip")
-    max_phone_retries = models.IntegerField(verbose_name="Кол-во регистраций с одного телефона")
-    invite_expiration = models.IntegerField(verbose_name="Срок действия инвайт кода")
-
-    website_verification = models.BooleanField(verbose_name="Обязательность верификации сайта мерчанта")
-    dns_salt = models.CharField(verbose_name="Соль для кода верификации для TXT в DNS ")
-
-    min_traders = models.IntegerField(verbose_name="Минимальное количество активных трейдеров")
-    min_amounts = models.IntegerField(verbose_name="Минимальные остатки по лимитам активных трейдеров (в USDT)")
-    max_limit = models.IntegerField(
-        verbose_name="Максимальный процент отношения общей суммы заявок за последние 10 минут к остаткам по лимитам всех активных трейдеров (в %)")
-    logout_in = models.IntegerField(verbose_name="Разлогинивать через")
-
-    trader_inactive_push = models.IntegerField(verbose_name="Пуш уведомление о “засыпании” трейдера")
-    inactive_email = models.IntegerField(verbose_name="Email уведомление о неактивности")
-
-    def __str__(self):
-        return 'Processing settings'
 
 
 class Notifications(models.Model):

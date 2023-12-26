@@ -113,7 +113,7 @@
 
 </style>
 <div class="modal-dialog">
-    <form method="post" action="{% url 'complaint' order_id=order_id %}">
+    <form method="post" action="{% url 'complaint' order_id=order_id %}" enctype="multipart/form-data">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Создать тикет</h5>

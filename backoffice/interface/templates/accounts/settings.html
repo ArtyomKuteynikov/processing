@@ -7,7 +7,7 @@
             background-color: #ffffff;
             border-radius: 10px;
             padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            /*box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);*/
         }
 
         input, textarea {
@@ -151,6 +151,12 @@
                 <label for="link">Смена пароля</label><br>
                 <a id="link" class="btn btn-outline-primary" href="/change-password/">Поменять пароль</a>
             </div>
+            {% if user.customer.account_type == "TRADER" %}
+            <div class="modal-body">
+                <label for="link">Блокировка</label><br>
+                <a class="btn btn-outline-primary" id="block">Самоблокировка</a>
+            </div>
+            {% endif %}
         </div>
     </div>
     <div class="modal-dialog col-md-8"></div>
@@ -158,13 +164,51 @@
 <div class="row">
     <div class="modal-dialog col-md-4">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Уведомления</h5>
-            </div>
-            <div class="modal-body">
-                <label for="link">Дополнительный email</label>
-                <input class="form-control" placeholder="Введите свою почту">
-            </div>
+            <form method="post" action="{% url 'account_settings' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Персональные настройки</h5>
+                </div>
+                <div class="modal-body">
+                    <label for="link">Часовой пояс</label>
+                    <input class="form-control" placeholder="Введите часовой пояс UTC (+/-)" type="number"
+                           value="{{ user.customer.time_zone }}" name="time_zone">
+                </div>
+                <div class="modal-body">
+                    <label for="link">Язык</label>
+                    <select class="form-control">
+                        <option value="ru">Русский</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="confirmSettings" class="btn btn-primary">Сохранить</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+    <div class="modal-dialog col-md-8"></div>
+</div>
+<div class="row">
+    <div class="modal-dialog col-md-4">
+        <div class="modal-content">
+            <form method="post" action="{% url 'subscribe' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Уведомления</h5>
+                </div>
+                <div class="modal-body">
+                    <label for="link">Telegram</label>
+                    <input class="form-control" placeholder="Введите свой TelegramID"
+                           value="{{ user.customer.telegram_id }}" name="telegram_id" id="telegram_id">
+                    <p>Чтобы получать уведомления - подпишитесь на <a target="_blank"
+                                                                      href="https://t.me/processing_notifier_bot?start={{ user.customer.email }}">TelegramBOT</a>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
         </div>
     </div>
     <div class="modal-dialog col-md-8"></div>
@@ -217,12 +261,55 @@
     </div>
 </div>
 
+
+<div class="modal fade" id="accountBlock" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Блокировка аккаунта></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы не сможете войти в аккаунт, все активные сессии будут завершены, разблокировка аккаунта будет
+                    возможна только через техподдержку.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <a href="/block/" type="button" class="btn btn-primary">Заблокировать</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="confirmationEnableModal" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Включение 2FA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p>Отсканируйте код с помощью приложения Google Authenticator</p>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?data={{ user.customer.uri_2fa }};size=100x100"
+                     alt="QR Code">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Готово</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const checkbox = document.getElementById('flexSwitchCheckDefault');
         const confirmButton = document.getElementById('confirm');
         const settingsForm = document.getElementById('settingsForm');
         const sendButton = document.getElementById('send');
+        const blockButton = document.getElementById('block');
 
         checkbox.addEventListener('change', function () {
             // Отправка запроса при изменении состояния чекбокса
@@ -230,8 +317,7 @@
             if (!isChecked) {
                 // Отправить запрос на отключение 2FA
                 fetch('/disable-2fa/', {
-                    method: 'POST',
-                    // Дополнительные параметры запроса, если необходимо
+                    method: 'GET',
                 }).then(response => {
                     if (response.ok) {
                         // В случае успешного ответа, открываем модальное окно для ввода кода подтверждения
@@ -244,6 +330,21 @@
                     console.error('Ошибка при выполнении запроса:', error);
                 });
                 $('#confirmationModal').modal('show');
+            } else {
+                fetch('/enable-2fa/', {
+                    method: 'GET',
+                }).then(response => {
+                    if (response.ok) {
+                        // В случае успешного ответа, открываем модальное окно для ввода кода подтверждения
+                        console.error('Отключено');
+                    } else {
+                        // Обработка ошибки
+                        console.error('Ошибка при отключении 2FA');
+                    }
+                }).catch(error => {
+                    console.error('Ошибка при выполнении запроса:', error);
+                });
+                $('#confirmationEnableModal').modal('show');
             }
         });
 
@@ -253,6 +354,10 @@
 
         confirmButton.addEventListener('click', function () {
             $('#accountConfirmationModal').modal('show');
+        });
+
+        blockButton.addEventListener('click', function () {
+            $('#accountBlock').modal('show');
         });
     });
 </script>

@@ -256,13 +256,14 @@
                         <li>
                             <a class="dropdown-item d-flex align-items-center">
                                 <i class="bi bi-clock"></i>
-                                <span>UTC + {{ user.customer.time_zone }}</span>
+                                <span>UTC{% if user.customer.time_zone >= 0 %}+{% endif %}{{ user.customer.time_zone }}</span>
                             </a>
                         </li>
 
                         <li>
                             <hr class="dropdown-divider">
                         </li>
+                        {% if user.customer.account_type == "TRADER" %}
 
                         <li>
                             <p class="dropdown-item d-flex align-items-center">
@@ -278,6 +279,7 @@
                         <li>
                             <hr class="dropdown-divider">
                         </li>
+                        {% endif %}
 
                         <li>
                             <a class="dropdown-item d-flex align-items-center">

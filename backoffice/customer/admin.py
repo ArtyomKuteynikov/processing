@@ -5,12 +5,18 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib import admin
 from django.db.models import Count, Sum, F
 from django.utils.html import format_html
-
-from .models import Customer, CustomerDocument, InviteCodes, Websites, Traders, Merchants, Request, TraderPaymentMethod, User, Settings, Cards, CardsLimits, WebsitesCategories
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .models import Customer, CustomerDocument, InviteCodes, Websites, Traders, Merchants, Request, TraderPaymentMethod, User, Settings, Cards, CardsLimits, WebsitesCategories, MerchantsCategories
 from wallet.models import Balance
 from order.models import Transaction
 from currency.models import Currency, PaymentMethods
 from interface.utils import send_email
+
+
+@admin.register(MerchantsCategories)
+class MerchantsCategoriesAdmin(admin.ModelAdmin):
+    pass
 
 
 class CustomerDocumentInline(admin.TabularInline):
@@ -65,6 +71,14 @@ class StaffAdmin(UserAdmin):
 class InviteCodesAdmin(admin.ModelAdmin):
     list_display = ['email', 'code', 'status', 'account']
 
+    readonly_fields = ['email', 'code', 'expiry', 'account']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 class WebsitesAdmin(admin.ModelAdmin):
     list_display = ['domain', 'status']
@@ -72,11 +86,12 @@ class WebsitesAdmin(admin.ModelAdmin):
 
 class BaseCustomerAdmin(admin.ModelAdmin):
     exclude = ['last_login', 'username', 'is_superuser', 'is_staff', 'groups', 'user_permissions', 'date_joined']
-    readonly_fields = ['account_type', 'password', 'method_2fa', 'value_2fa', ]
+    readonly_fields = ['account_type', 'password', 'value_2fa', ]
 
 
 class TraderAdmin(BaseCustomerAdmin):
     list_display = ('id', 'phone', 'email', 'balance', 'interest_rate', 'status', 'verified')
+    readonly_fields = ('category', )
     inlines = [BalanceInline, CustomerDocumentInline, PaymentMethodsInline]
 
     def get_queryset(self, request):
@@ -133,8 +148,9 @@ class RequestAdmin(admin.ModelAdmin):
     def invite_code(self, obj):
         try:
             invite = InviteCodes.objects.get(account=obj)
+            color = "red" if invite.expiry.timestamp() <= datetime.datetime.now().timestamp() else "green"
             return format_html(
-                f'<span title="Здравствуйте! Ваша заявка на регистрацию мерчанта одобрена. Пройти регистрацию Вы можете по ссылке: ... Инвайт код: {invite.code}. Обращаем внимание, что срок действия кода ограничен.">{invite.code}</span>'
+                f'<a class="related-widget-wrapper-link change-related" id="change_id_account" data-href-template="/admin/customer/request/__fk__/change/?_to_field=id&amp;_popup=1" data-popup="yes" request""=""  href="/admin/customer/invitecodes/{invite.id}/change/?_to_field=id&amp;_popup=1" style="color: {color}">{invite.code}</a>'
             )
         except InviteCodes.DoesNotExist:
             return None
@@ -153,8 +169,8 @@ class RequestAdmin(admin.ModelAdmin):
 Обращаем внимание, что срок действия кода ограничен."
                 """
                 send_email(request_obj.email, "Заявка на регистрацию одобрена", text)
-                expiry = datetime.datetime.now() + datetime.timedelta(days=5)
-                new_invite_code = InviteCodes(account=request_obj, code=code, status=1, email=request_obj.email, expiry=expiry)
+                expiry = datetime.datetime.now() + datetime.timedelta(days=Settings.objects.first().invite_expiration)
+                new_invite_code = InviteCodes(account=request_obj, code=code, status=0, email=request_obj.email, expiry=expiry)
                 new_invite_code.save()
 
     add_invite_code.short_description = 'Add Invite Code'
@@ -177,7 +193,7 @@ class PaymentMethodInline(admin.TabularInline):
 class SettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Trader settings', {
-            'fields': ('trader_deposit_limit', 'trader_orders', 'min_limit', 'fix_commission'),
+            'fields': ('trader_deposit_limit', 'trader_limit', 'min_limit', 'fix_commission'),
         }),
         ('Merchant settings', {
             'fields': ('merchant_deposit', 'commission_in', 'commission_out', 'withdrawals_limit', 'withdrawal_min',
@@ -209,6 +225,15 @@ class SettingsAdmin(admin.ModelAdmin):
 
 class WebsiteCategoriesAdmin(admin.ModelAdmin):
     pass
+
+
+@receiver(post_save, sender=CustomerDocument)
+def customer_document_status_change(sender, instance, **kwargs):
+    if instance.status == 'verified':
+        text = f"""Здравствуйте! 
+Ваша заявка на верификацию личности одобрена. 
+Теперь вы можете внести депозит и начать работу на платформе"""
+        send_email(instance.customer.email, "Верификация успешно пройдена", text)
 
 
 admin.site.register(Request, RequestAdmin)

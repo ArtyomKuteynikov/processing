@@ -10,18 +10,23 @@ TICKET_STATUSES = [
     (2, 'Solved')
 ]
 
+TICKET_TYPES = [
+    (0, 'Order'),
+    (1, 'Question')
+]
+
 
 class Ticket(models.Model):
     client = models.ForeignKey(Customer, on_delete=models.CASCADE)
     title = models.CharField(max_length=128)
     status = models.IntegerField(choices=TICKET_STATUSES)
-    priority = models.IntegerField()
+    priority = models.IntegerField(choices=TICKET_TYPES)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "support_ticket"
-        ordering = ('priority', 'created',)
+        ordering = ('updated', 'priority', )
         verbose_name = "Ticket"
         verbose_name_plural = "Tickets"
 

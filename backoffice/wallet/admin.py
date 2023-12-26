@@ -7,6 +7,8 @@ from .models import Withdrawal, Balance
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 
+from interface.utils import send_tg
+
 try:
     Permission.objects.create(codename='wallet.can_change_approved_status', name='Can change Approved withdrawals',
                               content_type=ContentType.objects.get_for_model(Withdrawal))
@@ -18,7 +20,7 @@ except:
 
 @admin.register(Balance)
 class WalletAdmin(admin.ModelAdmin):
-    pass
+    readonly_fields = ['balance_link']
 
 
 class WithdrawalAdmin(admin.ModelAdmin):
@@ -56,6 +58,10 @@ class WithdrawalAdmin(admin.ModelAdmin):
                 category='withdrawal'
             )
             notification.save()
+            try:
+                send_tg(obj.customer.telegram_id, notification.body)
+            except:
+                pass
         elif obj.status == 'CANCELED':
             transaction = Transaction(
                 sender=obj.customer,

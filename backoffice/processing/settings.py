@@ -299,8 +299,25 @@ BATON = {
                     'label': 'Transactions'
                 },
                 {
+                    'name': 'statistics',
+                    'label': 'Statistics'
+                },
+                {
                     'name': 'order',
                     'label': 'Order'
+                },
+            )
+        },
+        {
+            'type': 'app',
+            'name': 'currency',
+            'label': 'Courses',
+            'icon': 'fa fa-lock',
+            'default_open': False,
+            'models': (
+                {
+                    'name': 'courses',
+                    'label': 'Parsing Courses'
                 },
             )
         },

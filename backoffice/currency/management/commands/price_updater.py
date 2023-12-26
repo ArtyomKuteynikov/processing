@@ -59,4 +59,4 @@ class Command(BaseCommand):
                 pair.commex_in, pair.commex_out = commex(pair.pair)
                 pair.grantex_in, pair.grantex_out = grantex(pair.pair)
                 pair.save()
-            time.sleep(600)
+            time.sleep(60)

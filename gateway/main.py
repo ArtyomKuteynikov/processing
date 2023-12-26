@@ -48,6 +48,7 @@ add_pagination(app)
 
 templates = Jinja2Templates(directory="templates")
 
+# TODO: заменить на данный из Settings
 TIME_LIMIT = 600
 
 
@@ -184,6 +185,7 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     website = website.first()
     if not website:
         return
+    # TODO: добавить из настроек обязательность верификации
     if website[0].verified != 1 or website[0].status != 1:
         return
     output_link = await session.execute(select(Link).where((Link.currency_id == currency[0].id) & (Link.network_id == network[0].id)))
@@ -223,7 +225,8 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
         side=data.side,
         trader_id=trader_id,
         external_id=data.external,
-        client_id=data.client
+        client_id=data.client,
+        client_contact=data.client_contact
     )
     session.add(new_order)
     order = new_order

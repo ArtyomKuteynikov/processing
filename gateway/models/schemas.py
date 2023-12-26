@@ -227,6 +227,7 @@ class CreateOrder(BaseModel):
     side: str = 'IN'
     client: int
     external: int
+    client_contact: str
 
 
 class OrderFilterSchema(BaseModel):

@@ -338,7 +338,7 @@
                                 id="basic-addon2">
                             <img src="{% static '/icons/copy.svg' %}" alt="">
                           </span>
-                                    <p id="verification"
+                                    <p id="verification" style="display: inline;overflow-x: scroll;white-space: nowrap;"
                                        class="form-control border-none mb-0 shadow-none bg-transparent p-8 border-gray-300 rounded-3"
                                        aria-label="Введите номер телефона" aria-describedby="basic-addon2">
                                         {{ website.verification_code }}
@@ -372,9 +372,13 @@
                                 id="basic-addon1">
                             <img src="{% static '/icons/copy.svg' %}" alt="">
                           </span>
-                                    <p id="key"
+                                    <p id="key" style="display: inline;overflow-x: scroll;white-space: nowrap;"
                                        class="form-control border-none mb-0 shadow-none bg-transparent p-8 border-gray-300 rounded-3"
                                        aria-label="Введите номер телефона" aria-describedby="basic-addon1">{{ website.key }}</p>
+                                    <a href="/change-key/{{ website.id }}"
+                                class="btn btn-warning">
+                                        <i style="color:white;" class="bi bi-arrow-clockwise"></i>
+                                    </a>
                                 </div>
                             </div>
                         </div>

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from telegram import Bot
+import requests
 import asyncio
 
 load_dotenv()
@@ -14,8 +14,6 @@ SMTP_SSL = os.environ.get("SMTP_SSL")
 SMTP_LOGIN = os.environ.get("SMTP_LOGIN")
 SMTP_PASS = os.environ.get("SMTP_PASS")
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-
-bot = Bot(token=TELEGRAM_TOKEN)
 
 
 def send_email(recipient_email, subject, message):
@@ -32,9 +30,20 @@ def send_email(recipient_email, subject, message):
         smtp.send_message(msg)
 
 
-def send_tg(recipient, message):
-    msg = asyncio.run(bot.send_message(chat_id=recipient, text=message))
-    return msg.chat_id
+def send_tg(telegram_id, message):
+    url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
+    params = {
+        'chat_id': telegram_id,
+        'text': message,
+    }
+    try:
+        response = requests.post(url, params=params)
+        response.raise_for_status()
+        print(f"Сообщение успешно отправлено в Telegram для пользователя с ID {telegram_id}")
+        return 0
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при отправке сообщения в Telegram: {e}")
+        return 0
 
 
 def handle_uploaded_file(f):

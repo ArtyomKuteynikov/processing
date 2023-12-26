@@ -193,6 +193,7 @@ class Order(Base):
     initials = Column(String(128))
     client_id = Column(Integer)
     external_id = Column(Integer)
+    client_contact = Column(String(256))
 
     class Config:
         orm_mode = True

@@ -5,12 +5,13 @@ from functools import wraps
 from itertools import groupby
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 import pyotp
 from .forms import Step1Form, LoginForm, OTPForm, Reset1Form, Reset2Form, RequestForm, MerchantForm, SupportForm, \
     SupportMessageForm, CustomerChangeForm, WithdrawalForm, CardsForm, LimitsForm, ChoseMethodForm, KYCForm, \
-    WebsitesForm
+    WebsitesForm, TelegramForm, AccountSettings
 from customer.models import Customer, Request, InviteCodes, Settings, User, TraderExchangeDirections, Cards, CardsLimits, Notifications, CustomerDocument, Websites, WebsitesCategories
 from order.models import Transaction, Order
 from wallet.models import Balance, Withdrawal
@@ -62,9 +63,20 @@ def step1(request):
                 phone=form.data['phone_number'],
                 key=str(uuid.uuid4()),
                 lang_code='ru',
-                time_zone=0
+                time_zone=0,
+                interest_rate=5
             )
             customer.save()
+            currency = Currency.objects.get(ticker='USDT')
+            network = Networks.objects.get(short_name='TRC20')
+            link = Links.objects.get(currency=currency, network=network)
+            wallet = Balance.objects.create(
+                balance_link=link,
+                account=customer,
+                amount=0,
+                frozen=0
+            )
+            wallet.save()
             return redirect(reverse('step2') + f'?customer={customer.key}')
     else:
         form = Step1Form()
@@ -232,6 +244,9 @@ def login_view(request):
             if not user:
                 form.add_error(None, "Такого пользователя не существует")
                 return render(request, 'auth/login.html', {'form': form})
+            if user.account_status == 'blocked':
+                form.add_error(None, "Пользователь заблокирован")
+                return render(request, 'auth/login.html', {'form': form})
             if not user.email_is_verified or not user.phone_is_verified:
                 return redirect(reverse('step2') + f'?customer={user.key}')
             if not user.password:
@@ -307,7 +322,7 @@ def login_2fa(request):
 def merchant_request(request):
     if request.method == 'POST':
         form = RequestForm(request.POST)
-        exists = is_user_exists(form.data['email'], form.data['phone_number'], '')
+        exists = is_user_exists(form.data['email'], form.data['phone_number'])
         if exists:
             form.add_error(None, 'Пользователь с такими учетными данными уже существует')
         if form.is_valid() and not exists:
@@ -315,7 +330,7 @@ def merchant_request(request):
                 email=form.data['email'],
                 phone=form.data['phone_number'],
                 site=form.data['website'],
-                category=form.data['comment'],
+                category_id=form.data['comment'],
                 status=0
             )
             customer.save()
@@ -331,9 +346,7 @@ def merchant1(request):
     if request.method == 'POST':
         form = MerchantForm(request.POST)
         exists = is_user_exists(form.data['email'], form.data['phone_number'])
-        invite_code = InviteCodes.objects.filter(email=form.data['email'], code=form.data['invite_code'],
-                                                 status=0).first()
-        print(invite_code.expiry.date())
+        invite_code = InviteCodes.objects.filter(email=form.data['email'], code=form.data['invite_code']).first()
         if invite_code:
             invite_code = invite_code.expiry.date() >= datetime.datetime.now().date()
         if not invite_code:
@@ -358,9 +371,20 @@ def merchant1(request):
                 phone=form.data['phone_number'],
                 key=str(uuid.uuid4()),
                 lang_code='ru',
-                time_zone=0
+                time_zone=0,
+                interest_rate=5
             )
             customer.save()
+            currency = Currency.objects.get(ticker='USDT')
+            network = Networks.objects.get(short_name='TRC20')
+            link = Links.objects.get(currency=currency, network=network)
+            wallet = Balance.objects.create(
+                balance_link=link,
+                account=customer,
+                amount=0,
+                frozen=0
+            )
+            wallet.save()
             return redirect(reverse('step2') + f'?customer={customer.key}')
     else:
         form = MerchantForm()
@@ -400,7 +424,21 @@ def transactions_view(request):
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
     else:
         max_amount = 0
-    form = WithdrawalForm()
+    currency = Currency.objects.get(ticker='USDT')
+    network = Networks.objects.get(short_name='TRC20')
+    link = Links.objects.get(currency=currency, network=network)
+    if request.user.customer.account_type == 'TRADER':
+        form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
+                              max_amount=(request.user.customer.balance_set.filter(
+                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                  balance_link=link).first() else 0) / link.currency.denomination)
+        max_deposit = Settings.objects.first().trader_deposit_limit
+    else:
+        form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
+                              max_amount=(request.user.customer.balance_set.filter(
+                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                  balance_link=link).first() else 0) / link.currency.denomination)
+        max_deposit = Settings.objects.first().merchant_deposit
     return render(request, 'accounts/transactions.html',
                   {'transactions': transactions[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
                    'form': form})
@@ -416,7 +454,19 @@ def orders_view(request):
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
     else:
         max_amount = 0
-    form = WithdrawalForm()
+    currency = Currency.objects.get(ticker='USDT')
+    network = Networks.objects.get(short_name='TRC20')
+    link = Links.objects.get(currency=currency, network=network)
+    if request.user.customer.account_type == 'TRADER':
+        form = WithdrawalForm(min_amount=Settings.objects.first().min_limit,
+                              max_amount=(request.user.customer.balance_set.filter(
+                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                  balance_link=link).first() else 0) / link.currency.denomination)
+    else:
+        form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min,
+                              max_amount=(request.user.customer.balance_set.filter(
+                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                  balance_link=link).first() else 0) / link.currency.denomination)
     return render(request, 'accounts/orders.html',
                   {'orders': orders, 'balances': balances, 'address': address, 'max_amount': max_amount, 'form': form})
 
@@ -443,8 +493,22 @@ def order_start(request, order_id):
             traders = TraderExchangeDirections.objects.filter(direction=direction, input=True).all()
         else:
             traders = TraderExchangeDirections.objects.filter(direction=direction, output=True).all()
-        traders = [i for i in traders if i.trader.verification_status().lower() == 'verified' and i.trader.status.lower() == 'active']
-        print(traders)
+        traders = [i for i in traders if i.trader.verification_status().lower() == 'verified' and i.trader.status.lower() == 'active' and i.trader.account_status.lower() == 'active' and (Balance.objects.filter(account=i.trader, balance_link=order.output_link).first().amount if Balance.objects.filter(account=i.trader, balance_link=order.output_link).first() else 0) > order.output_amount]
+        # TODO: сделать так чтобы карты проверялись и выдавались только трейдеры с картами которые еще не певысили лимиты
+        '''trader_cards = []
+        for trader in traders:
+            cards = Cards.objects.filter(customer=trader.trader, method_id=method).all()
+            for card in cards:
+                if order.side == 'IN':
+                    day_amount = sum([i.input_amount for i in Order.objects.filter(method=card, side='IN', created__range=[datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()]).all()])
+                    month_amount = sum([i.input_amount for i in Order.objects.filter(method=card, side='IN', created__range=[datetime.datetime.now()-datetime.timedelta(days=30), datetime.datetime.now()]).all()])
+                    if card.limits.input_min_limit < order.input_amount < card.limits.input_operation_limit and card.limits.input_day_limit > day_amount and card.limits.input_month_limit > month_amount:
+                        trader_cards.append(card)
+                else:
+                    day_amount = sum([i.input_amount for i in Order.objects.filter(method=card, side='OUT', created__range=[datetime.datetime.now() - datetime.timedelta(days=1), datetime.datetime.now()]).all()])
+                    month_amount = sum([i.input_amount for i in Order.objects.filter(method=card, side='OUT', created__range=[datetime.datetime.now() - datetime.timedelta(days=30), datetime.datetime.now()]).all()])
+                    if card.limits.output_min_limit < order.input_amount < card.limits.output_operation_limit and card.limits.output_day_limit > day_amount and card.limits.output_month_limit > month_amount:
+                        trader_cards.append(card)'''
         if not traders:
             order.status = 4
             order.save()
@@ -478,6 +542,10 @@ def order_start(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(trader.trader.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
         return redirect('order-pay', order_id=order_id)
     side = order.side
     methods = PaymentMethods.objects.all()
@@ -547,7 +615,7 @@ def realise_crypro(request, order_id):
     if not order:
         return JsonResponse({'status': -1})
     key = request.GET.get('key')
-    if pwd_context.verify(str(order.client_id), str(key)):
+    if pwd_context.verify(str(order.client_id), str(key)) and order.status == 2:
         order.status = 3
         order.save()
         transaction = Transaction.objects.get(other_id_1=order.id)
@@ -556,10 +624,26 @@ def realise_crypro(request, order_id):
         transaction.save()
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
-        merchant_balance.frozen = merchant_balance.frozen - order.output_amount
+        merchant_balance.frozen = merchant_balance.frozen - order.output_amount - order.output_amount*order.trader.interest_rate/100
         trader_balance.amount = trader_balance.amount + order.output_amount
         merchant_balance.save()
         trader_balance.save()
+        transaction_commission = Transaction(
+            sender_id=order.sender_id,
+            receiver_id=order.sender_id,
+            site_id=order.order_site_id,
+            link_id=order.output_link_id,
+            amount=order.output_amount * order.trader.interest_rate / 100,
+            finished=True,
+            type=6,
+            status=1,
+            counted='1',
+            other_id_1=order.id,
+            category='Комиссия',
+            created=datetime.datetime.now(),
+            updated=datetime.datetime.now(),
+        )
+        transaction_commission.save()
         notification = Notifications(
             customer=order.trader,
             title=f"Ордер №{order.id} выполнен",
@@ -568,6 +652,10 @@ def realise_crypro(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(order.trader.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
         notification = Notifications(
             customer=order.sender,
             title=f"Ордер №{order.id} выполнен",
@@ -576,6 +664,10 @@ def realise_crypro(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(order.sender.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
         return JsonResponse({'status': order.status})
     return JsonResponse({'status': -1})
 
@@ -585,7 +677,7 @@ def realise_crypro_trader(request, order_id):
     order = Order.objects.get(id=order_id)
     if not order:
         return JsonResponse({'status': -1})
-    if order.trader == request.user.customer:
+    if order.trader == request.user.customer and order.status == 2:
         order.status = 3
         order.save()
         transaction = Transaction(
@@ -606,7 +698,7 @@ def realise_crypro_trader(request, order_id):
         transaction.save()
         transaction_commission = Transaction(
             sender_id=order.sender_id,
-            receiver_id=order.trader_id,
+            receiver_id=order.sender_id,
             site_id=order.order_site_id,
             link_id=order.output_link_id,
             amount=order.output_amount*order.trader.interest_rate/100,
@@ -615,7 +707,7 @@ def realise_crypro_trader(request, order_id):
             status=1,
             counted='1',
             other_id_1=order.id,
-            category='Комиссия трейдера',
+            category='Комиссия',
             created=datetime.datetime.now(),
             updated=datetime.datetime.now(),
         )
@@ -623,7 +715,7 @@ def realise_crypro_trader(request, order_id):
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
         merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount*order.trader.interest_rate/100
-        trader_balance.amount = trader_balance.amount - order.output_amount + order.output_amount*order.trader.interest_rate/100
+        trader_balance.amount = trader_balance.amount - order.output_amount# + order.output_amount*order.trader.interest_rate/100
         merchant_balance.save()
         trader_balance.save()
         notification = Notifications(
@@ -634,6 +726,10 @@ def realise_crypro_trader(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(order.trader.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
         notification = Notifications(
             customer=order.sender,
             title=f"Ордер №{order.id} выполнен",
@@ -642,6 +738,10 @@ def realise_crypro_trader(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(order.sender.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
         return JsonResponse({'status': order.status})
     return JsonResponse({'status': -1})
 
@@ -668,6 +768,10 @@ def order_payed(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(order.trader.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
     return JsonResponse({'status': order.status})
 
 
@@ -693,6 +797,10 @@ def order_incorrect(request, order_id):
             category='order'
         )
         notification.save()
+        try:
+            send_tg(order.trader.telegram_id, notification.body)
+        except Exception as e:
+            print(e)
     return JsonResponse({'status': order.status})
 
 
@@ -710,6 +818,10 @@ def order_cancel(request, order_id):
         category='order'
     )
     notification.save()
+    try:
+        send_tg(order.trader.telegram_id, notification.body)
+    except:
+        pass
     return JsonResponse({'status': order.status})
 
 
@@ -753,16 +865,28 @@ def order_status(request, order_id):
 def withdrawals_view(request):
     balances = Balance.objects.filter(account=request.user).all()
     withdrawals = Withdrawal.objects.filter(customer=request.user.customer).all()
-    print(len(withdrawals))
+    print(request.user.customer.can_withdraw())
     address = DEPOSIT_ADDRESS
     if Customer.objects.filter(user_ptr=request.user).first():
         max_amount = Settings.objects.first().trader_deposit_limit if request.user.customer.account_type == 'TRADER' else Settings.objects.first().merchant_deposit
     else:
         max_amount = 0
-    form = WithdrawalForm()
+    currency = Currency.objects.get(ticker='USDT')
+    network = Networks.objects.get(short_name='TRC20')
+    link = Links.objects.get(currency=currency, network=network)
+    if request.user.customer.account_type == 'TRADER':
+        form = WithdrawalForm(min_amount=Settings.objects.first().min_limit, max_amount=(request.user.customer.balance_set.filter(
+                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                  balance_link=link).first() else 0)/link.currency.denomination)
+        max_deposit = Settings.objects.first().trader_deposit_limit
+    else:
+        form = WithdrawalForm(min_amount=Settings.objects.first().withdrawal_min, max_amount=(request.user.customer.balance_set.filter(
+                                  balance_link=link).first().amount if request.user.customer.balance_set.filter(
+                                  balance_link=link).first() else 0)/link.currency.denomination)
+        max_deposit = Settings.objects.first().merchant_deposit
     return render(request, 'accounts/withdrawals.html',
                   {'withdrawals': withdrawals[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
-                   'form': form})
+                   'form': form, 'max_deposit': max_deposit})
 
 
 @login_required
@@ -772,8 +896,8 @@ def statistics(request):
     aggregation_param = request.GET.get('groupby', 'days')
     start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
     end_date = datetime.datetime.strptime(end, '%Y-%m-%d') + datetime.timedelta(days=1)
-    transactions = Transaction.objects.filter(created__range=[start_date, end_date])
-    orders = Order.objects.filter(created__range=[start_date, end_date])
+    transactions = Transaction.objects.filter(Q(sender=request.user) | Q(receiver=request.user) & Q(created__range=[start_date, end_date]))
+    orders = Order.objects.filter(Q(sender=request.user) | Q(trader=request.user) & Q(created__range=[start_date, end_date]))
     if aggregation_param == 'days':
         transactions_aggregated = transactions.extra({'day': 'date(created)'}).values('day').annotate(
             total_transactions=Count('id'),
@@ -889,14 +1013,37 @@ def card(request, card_id):
 def settings(request):
     if request.method == 'POST':
         form = CustomerChangeForm(request.POST)
-        user = User.objects.get(id=request.user.id)
-        customer = Customer.objects.get(user_ptr=user)
+        customer = Customer.objects.get(id=request.user.id)
+        if (Customer.objects.filter(email=form.data['email']).first() and Customer.objects.filter(email=form.data['email']).first() != request.user.customer) or (Customer.objects.filter(phone=form.data['phone']).first() and Customer.objects.filter(phone=form.data['phone']).first() != request.user.customer):
+            form.add_error(None, 'Такой email или номер телефона уже зарегистрирован')
         if form.is_valid():
-            user.email = form.data['email']
+            customer.email = form.data['email']
             customer.phone = form.data['phone']
-            user.save()
+            # customer.telegram_id = form.data['telegram_id']
             customer.save()
         cache.set(f'restriction:{request.user.email}', 1, timeout=86400)
+    return render(request, 'accounts/settings.html')
+
+
+@login_required
+def subscribe(request):
+    if request.method == 'POST':
+        form = TelegramForm(request.POST)
+        customer = Customer.objects.get(id=request.user.id)
+        if form.is_valid():
+            customer.telegram_id = form.data['telegram_id']
+            customer.save()
+    return render(request, 'accounts/settings.html')
+
+
+@login_required
+def account_settings(request):
+    if request.method == 'POST':
+        form = AccountSettings(request.POST)
+        customer = Customer.objects.get(id=request.user.id)
+        if form.is_valid():
+            customer.time_zone = form.data['time_zone']
+            customer.save()
     return render(request, 'accounts/settings.html')
 
 
@@ -950,6 +1097,15 @@ def websites(request):
         website.save()
     form = WebsitesForm()
     return render(request, 'accounts/platforms.html', {'websites': websites, 'form': form})
+
+
+@login_required
+def change_key(request, site):
+    site = Websites.objects.get(id=site)
+    if site.merchant == request.user.customer:
+        site.key = uuid.uuid4()
+        site.save()
+    return redirect('website', website_id=site.id)
 
 
 @login_required
@@ -1040,11 +1196,15 @@ def update_direction(request):
 @login_required
 def disable_2fa(request):
     if request.method == 'POST':
-        code = request.data.get['code']
-        if code == cache.get(f"email:otp:{request.user.customer.email}"):
-            request.user.customer.method_2fa = 0
+        code = request.POST.get('code')
+        if str(code) == str(cache.get(f"email:otp:{request.user.customer.email}")):
+            customer = Customer.objects.get(id=request.user.id)
+            customer.method_2fa = 0
+            customer.save()
+        return redirect('settings')
     else:
         code = random.randint(100000, 999999)
+        print(code)
         cache.set(f"email:otp:{request.user.customer.email}", code, timeout=600)
         msg_body = f'''
                 Здравствуйте!
@@ -1053,7 +1213,14 @@ def disable_2fa(request):
     
                 Код отключения 2FA: {code}'''
         send_email(request.user.customer.email, 'Предупреждение о попытке отключения 2FA', msg_body)
-        print(code)
+    return JsonResponse({'status': True})
+
+
+@login_required
+def enable_2fa(request):
+    customer = Customer.objects.get(id=request.user.id)
+    customer.method_2fa = 2
+    customer.save()
     return JsonResponse({'status': True})
 
 
@@ -1063,7 +1230,7 @@ def support(request):
         form = SupportForm(request.POST, request.FILES)
         new_ticket = Ticket(
             title=form.data['title'],
-            priority=0,
+            priority=1,
             client=request.user.customer,
             status=0
         )
@@ -1072,7 +1239,7 @@ def support(request):
             message=form.data['comment'],
             author=0,
             ticket=new_ticket,
-            attachment=request.FILES['file'],
+            attachment=request.FILES['file'] if 'file' in request.FILES else '',
             read=0
         )
         message.save()
@@ -1099,7 +1266,7 @@ def complaint(request, order_id):
             message=form.data['comment'],
             author=0,
             ticket=new_ticket,
-            attachment=request.FILES['file'],
+            attachment=request.FILES['file'] if 'file' in request.FILES else '',
             read=0
         )
         message.save()
@@ -1118,7 +1285,7 @@ def ticket(request, ticket_id):
             message=form.data['message'],
             author=0,
             ticket_id=ticket_id,
-            attachment=request.FILES['file'],
+            attachment=request.FILES['file'] if 'file' in request.FILES else '',
             read=0
         )
         message.save()
@@ -1144,6 +1311,16 @@ def read(request, note_id):
     notification.read = True
     notification.save()
     return JsonResponse({'status': True})
+
+
+@login_required
+def block(request):
+    customer = Customer.objects.get(id=request.user.id)
+    customer.account_status = 'blocked'
+    customer.save()
+    [s.delete() for s in Session.objects.all() if s.get_decoded().get('_auth_user_id') == request.user.id]
+    logout(request)
+    return redirect('login')
 
 
 def logout_view(request):
