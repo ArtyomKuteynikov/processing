@@ -134,7 +134,7 @@ gettext = lambda s: s
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Europe/Moscow'
+TIME_ZONE = 'Europe/London'
 
 USE_TZ = True
 

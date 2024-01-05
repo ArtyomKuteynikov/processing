@@ -26,3 +26,5 @@ django-redis
 pyotp
 qrcode
 passlib
+git+https://github.com/ethereum/web3.py.git
+tronpy

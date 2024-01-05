@@ -185,6 +185,9 @@
         <nav class="header-nav  ms-auto d-none d-lg-block d-md-block d-xl-block">
             <h6>Заморожено: {{ user.customer.frozen_balance }} $</h6>
         </nav>
+        <nav class="header-nav  ms-auto d-none d-lg-block d-md-block d-xl-block">
+            <h6 id="courseData"></h6>
+        </nav>
         <nav class="header-nav ms-auto">
             <ul class="d-flex align-items-center">
 
@@ -459,6 +462,53 @@
             }
         });
     });
+</script>
+<script>
+    // Функция для выполнения запроса к указанному эндпоинту
+    function fetchCourseData() {
+        // Замените URL на ваш эндпоинт
+        const apiUrl = 'http://213.171.9.80:5000/v1/courses';
+
+        // Выполнение GET-запроса с использованием Fetch API
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                // Получение данных и форматирование строки
+                const course = data.courses[0];
+                const formattedString = `${course.currency_in}/${course.currency_out}: ${course.price} ₽`;
+
+                // Вывод строки на веб-странице
+                document.getElementById('courseData').innerText = formattedString;
+            })
+            .catch(error => {
+                console.error('Error fetching course data:', error);
+                document.getElementById('courseData').innerText = 'USDT/RUB: 91.94 ₽';
+            });
+    }
+
+    // Вызов функции при загрузке страницы
+    window.onload = fetchCourseData;
+    setInterval(() => {
+        fetchCourseData();
+    }, 60000);
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var formSubmitted = false;
+
+        document.querySelector('form').addEventListener('submit', function (event) {
+            if (formSubmitted) {
+                // Если форма уже была отправлена, предотвращаем повторную отправку
+                event.preventDefault();
+                alert('Form is already submitted. Please wait.');
+            } else {
+                // Если форма отправлена в первый раз, блокируем кнопку отправки
+                formSubmitted = true;
+                document.querySelector('button[type="submit"]').disabled = true;
+            }
+        });
+    });
+
 </script>
 </body>
 

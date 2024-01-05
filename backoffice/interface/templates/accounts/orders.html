@@ -89,6 +89,7 @@
         <th scope="col">Client ID</th>
         <th scope="col">External ID</th>
         <th scope="col">Контакт клиента</th>
+        <th scope="col">Действия</th>
         {% endif %}
     </tr>
     <tr style="background: #fff;">
@@ -164,6 +165,7 @@
         <th scope="col">
             <input class="form-control input-sm m0" style="margin: 0;" type="text" placeholder="ДО" id="client_contact">
         </th>
+        <th></th>
         {% endif %}
     </tr>
     </thead>
@@ -196,6 +198,9 @@
         <td>{{ i.client_id }}</td>
         <td>{{ i.external_id }}</td>
         <td>{{ i.client_contact }}</td>
+        <td>
+            <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
+        </td>
         {% endif %}
     </tr>
 
@@ -262,6 +267,9 @@
         <td>{{ i.client_id }}</td>
         <td>{{ i.external_id }}</td>
         <td>{{ i.client_contact }}</td>
+        <td>
+            <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
+        </td>
         {% endif %}
     </tr>
 
@@ -324,7 +332,7 @@
         <td>{% time_date i.created user.customer.time_zone %}<br>{% time_hours i.created user.customer.time_zone %}</td>
         <td><span class="badge rounded-pill bg-info">{% if i.side == "IN" %} Приём {% else %} Выплата {% endif %}</span>
         </td>
-        <td>${% divide i.input_amount i.input_link.currency.denomination %}</td>
+        <td>₽{% divide i.input_amount i.input_link.currency.denomination %}</td>
         {% if user.customer.account_type == "TRADER" %}
         <td>{{ i.input_link.method.name }}</td>
         <td>{{ i.method.name }}</td>
@@ -342,6 +350,9 @@
         <td>{{ i.client_id }}</td>
         <td>{{ i.external_id }}</td>
         <td>{{ i.client_contact }}</td>
+        <td>
+            <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
+        </td>
         {% endif %}
     </tr>
     {% endif %}
@@ -420,11 +431,13 @@
                 var showRow = true;
                 var cells = $(this).find("td");
 
-                if (sideFilter && cells.eq(2).text() !== sideFilter) {
+                console.log(cells.eq(2).text(), cells.eq(2).text().indexOf(sideFilter));
+
+                if (sideFilter && cells.eq(2).text().indexOf(sideFilter) === -1) {
                     showRow = false;
                 }
 
-                var amount = parseFloat($(this).find("td:eq(3)").text().replace('$', '').replace(',', ''));
+                var amount = parseFloat($(this).find("td:eq(3)").text().replace('₽', '').replace('$', '').replace(',', ''));
                 if (input_amountFrom && amount < parseFloat(input_amountFrom)) {
                     showRow = false;
                 }
@@ -490,8 +503,9 @@
                 $("#filtered-data tr").each(function () {
                 var showRow = true;
                 var cells = $(this).find("td");
+                console.log(cells.eq(2).text(), cells.eq(2).text().indexOf(sideFilter));
 
-                if (sideFilter && cells.eq(2).text() !== sideFilter) {
+                if (sideFilter && cells.eq(2).text().indexOf(sideFilter) === -1) {
                     showRow = false;
                 }
 
@@ -567,6 +581,26 @@
             rows[i].style.display = rowContainsFilter ? "" : "none";
         }
     });
+</script>
+<script>
+    function checkOrderStatus() {
+        // Отправка запроса на сервер
+        fetch('/order/last/')
+            .then(response => response.json())
+            .then(data => {
+                // Проверка статуса заказа
+                if (data.status != {{ orders.first.id }}) {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    setInterval(() => {
+        checkOrderStatus();
+    }, 5000);
 </script>
 
 

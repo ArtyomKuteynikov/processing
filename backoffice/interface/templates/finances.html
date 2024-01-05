@@ -262,17 +262,10 @@
                 </p>
                 <img src="https://api.qrserver.com/v1/create-qr-code/?data={{ address }};size=100x100"/>
             </div>
-            <form method="post" action="{% url 'deposit' %}">
-                {% csrf_token %}
-                <input class="form-control" name="amount" max="{{ max_amount }}" type="number" step=".01"
-                       placeholder="Сумма пополнения" required>
-                <div class="modal-footer">
 
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                    <button id="send" type="submit" class="btn btn-primary">Пополнить</button>
-
-                </div>
-            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Готово</button>
+            </div>
         </div>
     </div>
 </div>

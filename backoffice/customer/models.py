@@ -3,7 +3,7 @@ import uuid
 
 import pyotp
 from django.db import models
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Q
 from django.urls import reverse
 from django.contrib.auth.models import User
 
@@ -80,6 +80,12 @@ REQUEST_STATUSES = [
 ]
 
 
+ACTIONS = [
+    (0, 'Login'),
+    (1, 'Change password')
+]
+
+
 def default_expiry():
     return timezone.now() + datetime.timedelta(days=Settings.objects.first().invite_expiration)
 
@@ -131,10 +137,11 @@ class WebsitesCategories(models.Model):
 class Request(models.Model):
     phone = models.CharField(max_length=256)
     email = models.EmailField(blank=False, unique=True)
-    site = models.CharField(max_length=256)
+    site = models.CharField(max_length=256, null=True, blank=True)
     category = models.ForeignKey(WebsitesCategories, on_delete=models.CASCADE, null=True, blank=True,
                                  verbose_name='Категория')
     status = models.IntegerField(choices=REQUEST_STATUSES)
+    account_type = models.CharField(max_length=16, choices=ACCOUNT_TYPES)
     expiry = models.DateField(default=default_expiry)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -157,6 +164,19 @@ class MerchantsCategories(models.Model):
     name = models.CharField(max_length=128)
     fees_in = models.FloatField()
     fees_out = models.FloatField()
+
+    def __str__(self):
+        return self.name
+
+
+class Wallet(models.Model):
+    hex_address = models.CharField(max_length=50)
+    address = models.CharField(max_length=40)
+    private_key = models.CharField(max_length=1024)
+    public_key = models.CharField(max_length=1024)
+
+    def __str__(self):
+        return self.address
 
 
 class Customer(User):
@@ -184,6 +204,7 @@ class Customer(User):
     updated = models.DateTimeField(auto_now=True)
     interest_rate = models.FloatField(null=True, blank=True)
     personal_course = models.FloatField(null=True, blank=True, verbose_name="Individual course")
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, null=True, blank=True)
 
     def verification_status(self):
         return self.customerdocument_set.first().get_status_display() if self.customerdocument_set.first() else 'Not started'
@@ -192,13 +213,13 @@ class Customer(User):
         total_balance = self.balance_set.aggregate(
             total_balance=models.Sum(models.F('amount') / models.F('balance_link__currency__denomination'))
         ).get('total_balance', 0)
-        return total_balance or 0
+        return round(total_balance, 2) or 0
 
     def frozen_balance(self):
         total_balance = self.balance_set.aggregate(
             total_balance=models.Sum(models.F('frozen') / models.F('balance_link__currency__denomination'))
         ).get('total_balance', 0)
-        return total_balance or 0
+        return round(total_balance, 2) or 0
 
     def notifications(self):
         return self.notifications_set.filter(read=False).all()[::-1]
@@ -232,6 +253,14 @@ class Customer(User):
 
     def __str__(self):
         return self.email
+
+
+class Logs(models.Model):
+    ip = models.CharField(max_length=64)
+    user_agent = models.CharField(max_length=1024)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    action = models.IntegerField(choices=ACTIONS)
+    created = models.DateTimeField(auto_now_add=True)
 
 
 class CustomerDocument(models.Model):

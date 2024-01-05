@@ -60,26 +60,26 @@
     startCountdown(countdownMinutes, countdownDisplay);
 
     function checkOrderStatus(orderId) {
-            // Отправка запроса на сервер
-            fetch('/order/status/' + orderId)
-                .then(response => response.json())
-                .then(data => {
-                    // Проверка статуса заказа
-                    if (data.status != {{ status }}) {
-                        // Если статус 'Success', перезагрузить страницу
-                        location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
+        // Отправка запроса на сервер
+        fetch('/order/status/' + orderId)
+            .then(response => response.json())
+            .then(data => {
+                // Проверка статуса заказа
+                if (data.status != {{ status }}) {
+                    // Если статус 'Success', перезагрузить страницу
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
 
-        // Запуск проверки статуса заказа каждые 10 секунд
-        const orderId = '{{ order_id }}'; // Замените на реальный идентификатор заказа
-        setInterval(() => {
-            checkOrderStatus(orderId);
-        }, 5000);
+    // Запуск проверки статуса заказа каждые 10 секунд
+    const orderId = '{{ order_id }}'; // Замените на реальный идентификатор заказа
+    setInterval(() => {
+        checkOrderStatus(orderId);
+    }, 5000);
 
     function cancelOrder(orderId) {
             fetch('/order/cancel/' + orderId)

@@ -73,6 +73,7 @@ class Transaction(models.Model):
     other_id_1 = models.IntegerField(null=True, blank=True)
     other_id_2 = models.IntegerField(null=True, blank=True)
     category = models.CharField(max_length=128, null=True, blank=True)
+    transaction_id = models.CharField(max_length=128, null=True, blank=True)
 
     class Meta:
         db_table = "order_transaction"

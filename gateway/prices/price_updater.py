@@ -14,6 +14,24 @@ EXCHANGES = ['binance', 'okx']
 ASSETS = ['USD', 'EUR', 'RUB']
 
 
+def grantex(symbol):
+    try:
+        r = requests.get(f'https://garantex.org/api/v2/depth?market={symbol.lower()}')
+
+        if not 'bids' in r.json():
+            return 0, 0
+
+        bids = [i for i in r.json()['bids'] if float(i['price']) * float(i['volume']) >= 200000]
+        asks = [i for i in r.json()['asks'] if float(i['price']) * float(i['volume']) >= 200000]
+
+        price_bid = float(bids[0]['price']) if bids else 0
+        price_ask = float(asks[0]['price']) if asks else 0
+
+        return round((price_bid + price_ask) / 2, 2)
+    except:
+        return 92
+
+
 async def get_exchange_directions():
     async with async_session_maker() as session:
         session = session
@@ -40,11 +58,9 @@ async def get_exchange_directions():
 async def current_price(asset, currency, redis_pool):
     exchange = getattr(ccxt, 'binance')()
     try:
-        ohlcv = exchange.fetch_ohlcv(f'{asset}/{currency}', timeframe='1d', limit=1)
-        price = ohlcv[0][4]
+        price = grantex(f'{asset}{currency}')
     except:
-        ohlcv = exchange.fetch_ohlcv(f'{currency}/{asset}', timeframe='1d', limit=1)
-        price = 1/ohlcv[0][4]
+        price = grantex(f'{currency}{asset}')
     await redis_pool.set(f"market_price:{asset}:{currency}", price, ex=600)
 
 

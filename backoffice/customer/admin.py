@@ -7,7 +7,8 @@ from django.db.models import Count, Sum, F
 from django.utils.html import format_html
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Customer, CustomerDocument, InviteCodes, Websites, Traders, Merchants, Request, TraderPaymentMethod, User, Settings, Cards, CardsLimits, WebsitesCategories, MerchantsCategories
+from .models import Customer, CustomerDocument, InviteCodes, Websites, Traders, Merchants, Request, TraderPaymentMethod, \
+    User, Settings, Cards, CardsLimits, WebsitesCategories, MerchantsCategories, Wallet
 from wallet.models import Balance
 from order.models import Transaction
 from currency.models import Currency, PaymentMethods
@@ -17,6 +18,11 @@ from interface.utils import send_email
 @admin.register(MerchantsCategories)
 class MerchantsCategoriesAdmin(admin.ModelAdmin):
     pass
+
+
+@admin.register(Wallet)
+class WalletsAdmin(admin.ModelAdmin):
+    readonly_fields = ['hex_address', 'address', 'private_key', 'public_key']
 
 
 class CustomerDocumentInline(admin.TabularInline):
@@ -57,7 +63,7 @@ class CardAdmin(admin.ModelAdmin):
 
 
 class CustomerAdmin(admin.ModelAdmin):
-    readonly_fields = ["password", 'last_login', 'username', 'is_superuser', 'is_staff', 'groups', 'permissions']
+    readonly_fields = ['last_login', 'username', 'is_superuser', 'is_staff', 'groups', 'permissions']
     list_display = ['email', 'phone', 'email_is_verified', 'phone_is_verified', 'status']
 
     inlines = [CustomerDocumentInline, WebsitesInline]
@@ -86,12 +92,12 @@ class WebsitesAdmin(admin.ModelAdmin):
 
 class BaseCustomerAdmin(admin.ModelAdmin):
     exclude = ['last_login', 'username', 'is_superuser', 'is_staff', 'groups', 'user_permissions', 'date_joined']
-    readonly_fields = ['account_type', 'password', 'value_2fa', ]
+    readonly_fields = ['account_type', 'value_2fa', 'password', 'method_2fa', 'value_2fa', 'wallet', 'key']
 
 
 class TraderAdmin(BaseCustomerAdmin):
     list_display = ('id', 'phone', 'email', 'balance', 'interest_rate', 'status', 'verified')
-    readonly_fields = ('category', )
+    readonly_fields = ['category', 'account_type', 'value_2fa', 'password', 'method_2fa', 'value_2fa', 'wallet', 'key']
     inlines = [BalanceInline, CustomerDocumentInline, PaymentMethodsInline]
 
     def get_queryset(self, request):
@@ -142,7 +148,7 @@ class InviteCodesInline(admin.TabularInline):
 
 
 class RequestAdmin(admin.ModelAdmin):
-    list_display = ('created', 'phone', 'email', 'site', 'category', 'status', 'invite_code')
+    list_display = ('created', 'phone', 'email', 'account_type', 'site', 'category', 'status', 'invite_code')
     inlines = [InviteCodesInline]
 
     def invite_code(self, obj):
