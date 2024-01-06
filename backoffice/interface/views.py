@@ -5,7 +5,7 @@ import time
 import uuid
 from functools import wraps
 from itertools import groupby
-
+from processing.settings import DEBUG
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
 from django.shortcuts import render, redirect, get_object_or_404
@@ -489,7 +489,7 @@ def transactions_view(request):
     if request.user.customer.wallet:
         address = request.user.customer.wallet.address
     else:
-        tron = Tron(network="nile")
+        tron = Tron(network="nile") if DEBUG else Tron()
         addr = tron.generate_address()
         wallet = Wallet(
             hex_address=addr['hex_address'],
@@ -555,6 +555,7 @@ def transactions_csv(request):
 
 @login_required
 def orders_view(request):
+    print(DEBUG)
     start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
     end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
     start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
@@ -571,7 +572,7 @@ def orders_view(request):
     if request.user.customer.wallet:
         address = request.user.customer.wallet.address
     else:
-        tron = Tron(network="nile")
+        tron = Tron(network="nile") if DEBUG else Tron()
         addr = tron.generate_address()
         wallet = Wallet(
             hex_address=addr['hex_address'],
@@ -669,13 +670,11 @@ def order_start(request, order_id):
                                               balance_link=order.output_link).first().amount if Balance.objects.filter(
                            account=i.trader, balance_link=order.output_link).first() else 0) > order.output_amount and order.side == "IN")]
         trader_cards = []
-        print(traders)
         for trader in traders:
             orders = len(Order.objects.filter(Q(trader=trader.trader) & (Q(status=0) | Q(status=1) | Q(status=2))))
             if orders >= 7:
                 continue
             cards = Cards.objects.filter(customer=trader.trader, method_id=method, status=True).all()
-            print(cards)
             for card in cards:
                 if order.side == 'IN':
                     day_amount = sum([i.input_amount / i.input_link.currency.denomination for i in Order.objects.filter(method=card, side='IN', created__range=[datetime.datetime.now()-datetime.timedelta(days=1), datetime.datetime.now()]).all()])
@@ -691,7 +690,6 @@ def order_start(request, order_id):
             side = order.side
             methods = PaymentMethods.objects.all()
             amount = order.input_amount / 100
-            # form = ChoseMethodForm()
             form.add_error(None, 'Банк в данный момент не доступен, пожалуйста, выберите друой')
             return render(request, 'payment/popup-start.html',
                           {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id,
@@ -807,6 +805,22 @@ def realise_crypro(request, order_id):
         transaction.status = 1
         transaction.finished = True
         transaction.save()
+        if order.sender.wallet:
+            merchant_wallet = order.sender.wallet
+        else:
+            tron = Tron(network="nile") if DEBUG else Tron()
+            addr = tron.generate_address()
+            wallet = Wallet(
+                hex_address=addr['hex_address'],
+                address=addr['base58check_address'],
+                private_key=addr['private_key'],
+                public_key=addr['public_key']
+            )
+            wallet.save()
+            customer = Customer.objects.get(id=order.sender.id)
+            customer.wallet = wallet
+            customer.save()
+            merchant_wallet = wallet
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
         merchant_balance.frozen = merchant_balance.frozen - order.output_amount
@@ -814,6 +828,7 @@ def realise_crypro(request, order_id):
         trader_balance.amount = trader_balance.amount + order.output_amount
         merchant_balance.save()
         trader_balance.save()
+        # TODO: send crypto from merchant wallet to trader wallet, and check balances
         transaction_commission = Transaction(
             sender_id=order.sender_id,
             receiver_id=order.sender_id,
@@ -861,11 +876,44 @@ def realise_crypro(request, order_id):
 @login_required
 def realise_crypro_trader(request, order_id):
     order = Order.objects.get(id=order_id)
+    print(DEBUG)
     if not order:
         return JsonResponse({'status': -1})
     if order.trader == request.user.customer and order.status == 2:
-        order.status = 3
-        order.save()
+        if order.sender.wallet:
+            merchant_wallet = order.sender.wallet
+        else:
+            tron = Tron(network="nile") if DEBUG else Tron()
+            addr = tron.generate_address()
+            wallet = Wallet(
+                hex_address=addr['hex_address'],
+                address=addr['base58check_address'],
+                private_key=addr['private_key'],
+                public_key=addr['public_key']
+            )
+            wallet.save()
+            customer = Customer.objects.get(id=order.sender.id)
+            customer.wallet = wallet
+            customer.save()
+            merchant_wallet = wallet
+        merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
+        trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
+        denomination = order.output_link.currency.denomination
+        '''merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount * order.trader.interest_rate / 100
+        trader_balance.amount = trader_balance.amount - order.output_amount  # + order.output_amount*order.trader.interest_rate/100
+        merchant_balance.save()
+        trader_balance.save()'''
+        transaction_data = order.trader.wallet.transfer(merchant_wallet.address, order.output_amount/denomination)
+        print(transaction_data['receipt']['result'])
+        merchant_wallet_balance = merchant_wallet.balance()
+        if (merchant_balance.amount + merchant_balance.frozen)/denomination != merchant_wallet_balance:
+            merchant_balance.amount = max(merchant_wallet_balance*denomination - merchant_balance.frozen, 0)
+        trader_wallet_balance = order.trader.wallet.balance()
+        if (trader_balance.amount + trader_balance.frozen) / denomination != trader_wallet_balance:
+            trader_balance.amount = max(trader_wallet_balance * denomination - trader_balance.frozen, 0)
+        merchant_balance.save()
+        trader_balance.save()
+        # TODO: fees
         transaction = Transaction(
             sender=order.trader,
             receiver=order.sender,
@@ -880,6 +928,7 @@ def realise_crypro_trader(request, order_id):
             category='Ордер клиента',
             created=datetime.datetime.now(),
             updated=datetime.datetime.now(),
+            transaction_id=transaction_data['id']
         )
         transaction.save()
         transaction_commission = Transaction(
@@ -898,12 +947,8 @@ def realise_crypro_trader(request, order_id):
             updated=datetime.datetime.now(),
         )
         transaction_commission.save()
-        merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
-        trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
-        merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount * order.trader.interest_rate / 100
-        trader_balance.amount = trader_balance.amount - order.output_amount  # + order.output_amount*order.trader.interest_rate/100
-        merchant_balance.save()
-        trader_balance.save()
+        order.status = 3
+        order.save()
         notification = Notifications(
             customer=order.trader,
             title=f"Ордер №{order.id} выполнен",
@@ -924,6 +969,7 @@ def realise_crypro_trader(request, order_id):
             category='order'
         )
         notification.save()
+
         try:
             send_tg(order.sender.telegram_id, notification.body)
         except Exception as e:
@@ -1066,7 +1112,7 @@ def withdrawals_view(request):
     if request.user.customer.wallet:
         address = request.user.customer.wallet.address
     else:
-        tron = Tron(network="nile")
+        tron = Tron(network="nile") if DEBUG else Tron()
         addr = tron.generate_address()
         wallet = Wallet(
             hex_address=addr['hex_address'],

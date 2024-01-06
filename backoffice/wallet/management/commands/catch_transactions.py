@@ -6,6 +6,7 @@ from currency.models import Links, Currency, Networks
 from interface.utils import send_tg
 from customer.models import Notifications, Customer
 import hashlib
+from processing import settings
 
 
 def generate_token(hash_value, access_key, access_id):
@@ -38,7 +39,7 @@ def check_transaction(transaction_id, address, locale='en_US', flow='fast', asse
 
 
 def get_transactions(account_id, customer):
-    url = f"https://nile.trongrid.io/v1/accounts/{account_id}/transactions/trc20"
+    url = f"https://nile.trongrid.io/v1/accounts/{account_id}/transactions/trc20" if settings.DEBUG else f"https://api.trongrid.io/v1/accounts/{account_id}/transactions/trc20"
     params = {'only_to': True, 'only_confirmed': True, 'limit': 20,}
     r = requests.get(url, params=params, headers={"accept": "application/json"})
     params['fingerprint'] = r.json().get('meta', {}).get('fingerprint')

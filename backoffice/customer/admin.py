@@ -22,7 +22,11 @@ class MerchantsCategoriesAdmin(admin.ModelAdmin):
 
 @admin.register(Wallet)
 class WalletsAdmin(admin.ModelAdmin):
-    readonly_fields = ['hex_address', 'address', 'private_key', 'public_key']
+    list_display = ['address', 'balance']
+    readonly_fields = ['hex_address', 'address', 'private_key', 'public_key', 'balance']
+
+    def balance(self, obj):
+        return f'{obj.balance()} USDT'
 
 
 class CustomerDocumentInline(admin.TabularInline):

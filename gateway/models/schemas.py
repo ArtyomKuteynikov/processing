@@ -220,7 +220,7 @@ class OfferData(BaseModel):
 class CreateOrder(BaseModel):
     key: str
     website_key: str
-    output_link: str
+    output_link: str = 'USDT_TRC20'
     amount: float | None = None
     quantity: float | None = None
     comment: str | None = None

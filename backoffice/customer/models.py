@@ -1,17 +1,16 @@
 import datetime
 import uuid
-
 import pyotp
 from django.db import models
 from django.db.models import Sum, F, Q
 from django.urls import reverse
 from django.contrib.auth.models import User
-
 from currency.models import Currency, PaymentMethods, ExchangeDirection
 from django.utils import timezone
 from django.core.cache import cache
-
-# from wallet.models import Balance
+from tronpy import Tron
+from tronpy.keys import PrivateKey
+from processing import settings
 
 OPENING_STATUSES = [
     ('pending', 'PENDING'),
@@ -174,6 +173,28 @@ class Wallet(models.Model):
     address = models.CharField(max_length=40)
     private_key = models.CharField(max_length=1024)
     public_key = models.CharField(max_length=1024)
+
+    def transfer(self, recipient_address, amount):
+        tron = Tron(network="nile") if settings.DEBUG else Tron()
+        token_address = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"
+        token_contract = tron.get_contract(token_address)
+        private_key = PrivateKey(bytes.fromhex(str(self.private_key)))
+        address = private_key.public_key.to_base58check_address()
+        precision = token_contract.functions.decimals()
+        print(recipient_address)
+        txn = (
+            token_contract.functions.transfer(recipient_address, int(amount * 10 ** precision))
+            .with_owner(address)
+            .build()
+            .sign(private_key)
+        )
+        return txn.broadcast().wait()
+
+    def balance(self):
+        client = Tron(network="nile") if settings.DEBUG else Tron()
+        cntr = client.get_contract("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj" if settings.DEBUG else "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")
+        precision = cntr.functions.decimals()
+        return cntr.functions.balanceOf(str(self.address)) / 10 ** precision
 
     def __str__(self):
         return self.address
