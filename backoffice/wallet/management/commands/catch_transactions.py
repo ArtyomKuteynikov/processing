@@ -72,7 +72,8 @@ def get_transactions(account_id, customer):
             transaction.category = f"Пополнение аккаунта #{transaction.id}"
             transaction.save()
             balance = transaction.sender.balance_set.get(balance_link=transaction.link)
-            balance.amount = round(balance.amount + transaction.amount)
+            denomination = link.currency.denomination
+            balance.amount = transaction.sender.wallet.balance() * denomination - balance.frozen
             balance.save()
         else:
             transaction = Transaction(
@@ -108,8 +109,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         while True:
-            for customer in Customer.objects.filter(account_type="TRADER").all():
-                if customer.wallet:
-                    get_transactions(customer.wallet.address, customer)
-            time.sleep(300)
+            try:
+                for customer in Customer.objects.filter(account_type="TRADER").all():
+                    if customer.wallet:
+                        get_transactions(customer.wallet.address, customer)
+                time.sleep(300)
+            except Exception as e:
+                print(e)
 

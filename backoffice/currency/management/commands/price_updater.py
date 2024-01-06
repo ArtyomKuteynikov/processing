@@ -53,10 +53,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         while True:
-            courses = Courses.objects.all()
-            for pair in courses:
-                pair.binance_in, pair.binance_out = binance(pair.pair)
-                pair.commex_in, pair.commex_out = commex(pair.pair)
-                pair.grantex_in, pair.grantex_out = grantex(pair.pair)
-                pair.save()
-            time.sleep(60)
+            try:
+                courses = Courses.objects.all()
+                for pair in courses:
+                    pair.binance_in, pair.binance_out = binance(pair.pair)
+                    pair.commex_in, pair.commex_out = commex(pair.pair)
+                    pair.grantex_in, pair.grantex_out = grantex(pair.pair)
+                    pair.save()
+                time.sleep(60)
+            except Exception as e:
+                print(e)

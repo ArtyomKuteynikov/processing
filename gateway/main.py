@@ -22,7 +22,7 @@ from config.main import Settings, LINK
 from telegram_bot.order import start, marked_as_payed, success, cancel, out_order
 from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
-from models import Customer, Order, Balance, Link, Currency, ExchangeDirection, TraderPaymentMethod, User, Network, Websites, Transaction
+from models import Customer, Order, Balance, Link, Currency, ExchangeDirection, TraderPaymentMethod, User, Network, Websites, Transaction, SettingsModel
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi_pagination import Page, add_pagination, paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
@@ -47,9 +47,6 @@ app.add_middleware(
 add_pagination(app)
 
 templates = Jinja2Templates(directory="templates")
-
-# TODO: заменить на данный из Settings
-TIME_LIMIT = 600
 
 
 def clean_phone(phone):
@@ -140,6 +137,7 @@ async def authenticate_user(username: str, password: str, session: AsyncSession)
 
 
 async def timeout_limit(session: AsyncSession, order_id: int):
+    TIME_LIMIT = (await session.execute(select(SettingsModel))).first()[0].order_life * 60
     await aio.sleep(TIME_LIMIT - 1)
     order = await session.execute(select(Order).where(Order.id == order_id))
     order = order.fetchone()
@@ -185,9 +183,9 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     website = website.first()
     if not website:
         return
-    # TODO: добавить из настроек обязательность верификации
-    if website[0].verified != 1 or website[0].status != 1:
-        return
+    if (await session.execute(select(SettingsModel))).first()[0].website_verification:
+        if website[0].verified != 1 or website[0].status != 1:
+            return
     output_link = await session.execute(select(Link).where((Link.currency_id == currency[0].id) & (Link.network_id == network[0].id)))
     output_link = output_link.first()
     if data.amount:

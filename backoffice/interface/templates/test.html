@@ -14,37 +14,41 @@
 <body>
 <style>
     .product-card {
-    display: inline-block;
-    width: 200px;
-    padding: 20px;
-    background-color: #3498db; /* Синий цвет */
-    border-radius: 10px;
-    text-align: center;
-    margin: 10px;
-}
+        display: inline-block;
+        width: 200px;
+        padding: 20px;
+        background-color: #3498db; /* Синий цвет */
+        border-radius: 10px;
+        text-align: center;
+        margin: 10px;
+    }
+    .gift {
+        background-color: red !important; /* Синий цвет */
+        width: 400px !important;
+    }
 
-.product-card h2 {
-    color: #fff; /* Белый цвет текста */
-}
+    .product-card h2 {
+        color: #fff; /* Белый цвет текста */
+    }
 
-.product-card p {
-    color: #fff; /* Белый цвет текста */
-}
+    .product-card p {
+        color: #fff; /* Белый цвет текста */
+    }
 
-.product-card button {
-    margin-top: 10px;
-}
+    .product-card button {
+        margin-top: 10px;
+    }
 
-/* Добавьте этот стиль, если вы хотите, чтобы кнопка выглядела как в Bootstrap */
-.product-card button.btn {
-    border-radius: 5px;
-}
+    /* Добавьте этот стиль, если вы хотите, чтобы кнопка выглядела как в Bootstrap */
+    .product-card button.btn {
+        border-radius: 5px;
+    }
 
-/* Добавьте этот стиль, если вы хотите, чтобы кнопка была светлой (light) */
-.product-card button.btn.btn-light {
-    background-color: #f8f9fa; /* Цвет фона "light" */
-    color: #000; /* Черный цвет текста */
-}
+    /* Добавьте этот стиль, если вы хотите, чтобы кнопка была светлой (light) */
+    .product-card button.btn.btn-light {
+        background-color: #f8f9fa; /* Цвет фона "light" */
+        color: #000; /* Черный цвет текста */
+    }
 </style>
 <div class="row" style="justify-content: space-around;">
 <div class="product-card" id="tea">
@@ -65,6 +69,13 @@
     <button class="btn btn-warning" onclick="buy('dance', 100)">Купить</button>
 </div>
 </div>
+<div class="row" style="justify-content: center;">
+<div class="product-card gift" id="gift">
+    <h2>Поздравляем с Новым годом!</h2>
+    <p>Получите 50 рублей</p>
+    <button class="btn btn-warning" onclick="get('gift', 50)">Получить!</button>
+</div>
+</div>
 <script>
 function buy(product, price) {
     // Создаем объект с данными для POST-запроса
@@ -76,6 +87,39 @@ function buy(product, price) {
         "quantity": price,
         "comment": "Оплата товара",
         "side": "IN",
+        "client": 1,
+        "external": 1,
+        "client_contact": "info@gmail.com"
+    };
+
+    // Отправляем POST-запрос
+    fetch('http://213.171.9.80:5000/v1/order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Открываем новое окно с полученной ссылкой
+        window.open(data.link, '_blank');
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+    });
+}
+
+function get(product, price) {
+    // Создаем объект с данными для POST-запроса
+    const data = {
+        "key": "f9c615a5-6b55-4354-980c-035cd2c006c8",
+        "website_key": "84e8eb08-c506-446f-bfb2-3f6901d6827d",
+        "output_link": "USDT_TRC20",
+        "amount": 0,
+        "quantity": price,
+        "comment": "Оплата товара",
+        "side": "OUT",
         "client": 1,
         "external": 1,
         "client_contact": "info@gmail.com"

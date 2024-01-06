@@ -239,3 +239,40 @@ class Balance(Base):
 
     # account = relationship("Customer", back_populates="balances")  # Assuming a one-to-many relationship with Customer
     # balance_link = relationship("Link", back_populates="balances")
+
+
+class SettingsModel(Base):
+    __tablename__ = 'customer_settings'
+
+    id = Column(Integer, primary_key=True, index=True)
+    trader_deposit_limit = Column(Integer, nullable=False, doc="Депозит трейдера (лимит)")
+    trader_limit = Column(Integer, nullable=False, doc="Кол-во заявок трейдера на вывод в сутки")
+    min_limit = Column(Integer, nullable=False, doc="Лимит трейдера на минимальную сумму вывода")
+    fix_commission = Column(Integer, nullable=False, doc="Фикс % трейдера")
+
+    merchant_deposit = Column(Integer, nullable=False, doc="Депозит мерчанта (лимит)")
+    commission_in = Column(Integer, nullable=False, doc="Комиссия системы инвойс клиентам")
+    commission_out = Column(Integer, nullable=False, doc="Комиссия системы вывод")
+    withdrawals_limit = Column(Integer, nullable=False, doc="Кол-во заявок мерчанта на вывод в сутки")
+    withdrawal_min = Column(Integer, nullable=False, doc="Лимит мерчанта на минимальную сумму вывода")
+    new_merchants_limit = Column(Integer, nullable=False, doc="Лимиты для новых мерчантов")
+    order_life = Column(Integer, nullable=False, doc="Срок действия ордера (для клиента)")
+
+    max_registration_tries = Column(Integer, nullable=False, doc='Кол-во попыток ввода кода подтверждения')
+    withdrawal_block = Column(Integer, nullable=False, doc='Блок на вывод средств после смены email/телефон')
+    phone_restriction = Column(Integer, nullable=False, doc="Запрет на использование “освобожденного телефона/email")
+    max_ip_requests = Column(Integer, nullable=False, doc="Кол-во запросов с одного ip")
+    max_phone_retries = Column(Integer, nullable=False, doc="Кол-во регистраций с одного телефона")
+    invite_expiration = Column(Integer, nullable=False, doc="Срок действия инвайт кода")
+
+    website_verification = Column(Boolean, nullable=False, doc="Обязательность верификации сайта мерчанта")
+    dns_salt = Column(String, nullable=False, doc="Соль для кода верификации для TXT в DNS ")
+
+    min_traders = Column(Integer, nullable=False, doc="Минимальное количество активных трейдеров")
+    min_amounts = Column(Integer, nullable=False, doc="Минимальные остатки по лимитам активных трейдеров (в USDT)")
+    max_limit = Column(Integer, nullable=False, doc="Максимальный процент отношения общей суммы заявок за последние 10 минут к остаткам по лимитам всех активных трейдеров (в %)")
+    logout_in = Column(Integer, nullable=False, doc="Разлогинивать через")
+
+    trader_inactive_push = Column(Integer, nullable=False, doc="Пуш уведомление о “засыпании” трейдера")
+    inactive_email = Column(Integer, nullable=False, doc="Email уведомление о неактивности")
+
