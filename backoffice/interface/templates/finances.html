@@ -283,6 +283,7 @@
                 <div class="modal-body" style="text-align: center;">
                     {{ form }}
                 </div>
+                <span class="badge badge-danger" style="width: 100%">Взимается комиссия 2$</span>
                 <div class="modal-footer">
 
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
@@ -312,6 +313,26 @@
     function openWithdrawal() {
         $('#withdrawal').modal('show');
     }
+
+    function checkOrderStatus() {
+        // Отправка запроса на сервер
+        fetch('/notification/last/')
+            .then(response => response.json())
+            .then(data => {
+                // Проверка статуса заказа
+                if (data.status != {{ user.customer.notifications_first }}) {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+
+    setInterval(() => {
+        checkOrderStatus();
+    }, 5000);
 </script>
 
 {% endblock %}

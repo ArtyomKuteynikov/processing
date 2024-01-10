@@ -324,6 +324,14 @@ async def create_order(data: CreateOrder, session: AsyncSession = Depends(get_as
     user = await get_user_by_key(data.key, session)
     if user is None:
         raise HTTPException(status_code=401, detail="INCORRECT KEY")
+    min_amount = (await session.execute(select(SettingsModel))).first()[0].min_order_amount
+    course = await redis_pool.get(f"market_price:USDT:RUB")
+    if data.amount:
+        quantity = round((data.amount * float(course)))
+    else:
+        quantity = round(data.quantity)
+    if quantity < min_amount:
+        raise HTTPException(status_code=400, detail=f"MIN ORDER AMOUNT IS {min_amount} RUB")
     order = await order_create(data, user.user_ptr_id, session)
     if not order:
         raise HTTPException(status_code=404)

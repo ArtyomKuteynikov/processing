@@ -21,15 +21,22 @@
         <span class="sub-sup-font-size gray-purple">{{ bank }}</span>
     </div>
     {% if status == 1 %}
-    <button onclick="paidOrder('{{ order_id }}')" class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
-        <img class="mr-2" src="{% static '/icons/check.svg' %}" alt="">
-        <span>Я перевел деньги</span>
-    </button>
-    <div class="d-flex justify-content-center">
-        <div class="d-flex align-items-center cursor-pointer">
-            <img class="mr-2" src="{% static '/icons/close-red.svg' %}" alt="">
-            <a onclick="cancelOrder('{{ order_id }}')" class="text-error fw-semibold" style="color:#B42318">Деньги не переводил, отменить</a>
+    <div id="buttons">
+        <button onclick="paidOrder('{{ order_id }}')" type="button"
+                class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
+            <img class="mr-2" src="{% static '/icons/check.svg' %}" alt="">
+            <span>Я перевел деньги</span>
+        </button>
+        <div class="d-flex justify-content-center">
+            <div class="d-flex align-items-center cursor-pointer">
+                <img class="mr-2" src="{% static '/icons/close-red.svg' %}" alt="">
+                <a onclick="cancelOrder('{{ order_id }}')" class="text-error fw-semibold" style="color:#B42318">Деньги
+                    не переводил, отменить</a>
+            </div>
         </div>
+    </div>
+    <div class="spinner-grow text-primary" style="text-align:center;display: none;" id="loader" role="status">
+        <span class="sr-only">Loading...</span>
     </div>
     {% else %}
     {% endif %}
@@ -96,7 +103,12 @@
             fetch('/order/paid/' + orderId)
                 .then(response => response.json())
                 .then(data => {
-                        location.reload();
+                    if ((data.status != {{ status }}) && (data.status != -1)) {
+                        var loader = document.getElementById('loader');
+                        var footer = document.getElementById('buttons');
+                        footer.style.display = 'none';
+                        loader.style.display = 'inline-block';
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);

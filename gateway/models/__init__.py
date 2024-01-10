@@ -256,6 +256,7 @@ class SettingsModel(Base):
     withdrawals_limit = Column(Integer, nullable=False, doc="Кол-во заявок мерчанта на вывод в сутки")
     withdrawal_min = Column(Integer, nullable=False, doc="Лимит мерчанта на минимальную сумму вывода")
     new_merchants_limit = Column(Integer, nullable=False, doc="Лимиты для новых мерчантов")
+    min_order_amount = Column(Integer, nullable=False)
     order_life = Column(Integer, nullable=False, doc="Срок действия ордера (для клиента)")
 
     max_registration_tries = Column(Integer, nullable=False, doc='Кол-во попыток ввода кода подтверждения')

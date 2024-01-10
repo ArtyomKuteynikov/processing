@@ -101,6 +101,7 @@ class Settings(models.Model):
     withdrawals_limit = models.IntegerField(verbose_name="Кол-во заявок мерчанта на вывод в сутки")
     withdrawal_min = models.IntegerField(verbose_name="Лимит мерчанта на минимальную сумму вывода")
     new_merchants_limit = models.IntegerField(verbose_name="Лимиты для новых мерчантов")
+    min_order_amount = models.IntegerField(verbose_name="Минимальная сумма ордеров клиентов(РУБ)")
     order_life = models.IntegerField(verbose_name="Срок действия ордера (для клиента)")
 
     max_registration_tries = models.IntegerField(verbose_name='Кол-во попыток ввода кода подтверждения')
@@ -121,6 +122,36 @@ class Settings(models.Model):
 
     trader_inactive_push = models.IntegerField(verbose_name="Пуш уведомление о “засыпании” трейдера")
     inactive_email = models.IntegerField(verbose_name="Email уведомление о неактивности")
+
+    system_wallet_address = models.CharField(max_length=40, verbose_name="Адрес системного кошелька")
+    system_wallet_private_key = models.CharField(max_length=1024, verbose_name="Приватный ключ чистемного кошелька")
+
+    def usdt_balance(self):
+        try:
+            client = Tron(network="nile") if settings.DEBUG else Tron()
+            cntr = client.get_contract("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj" if settings.DEBUG else "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")
+            precision = cntr.functions.decimals()
+            return cntr.functions.balanceOf(str(self.system_wallet_address)) / 10 ** precision
+        except Exception as e:
+            return str(e)
+
+    def trx_balance(self):
+        try:
+            client = Tron(network="nile") if settings.DEBUG else Tron()
+            return float(client.get_account_balance(str(self.system_wallet_address)))
+        except Exception as e:
+            return str(e)
+
+    def transfer_trx(self, address, amount):
+        print(address, amount)
+        client = Tron(network="nile") if settings.DEBUG else Tron()
+        private_key = PrivateKey(bytes.fromhex(str(self.system_wallet_private_key)))
+        txn = (
+            client.trx.transfer(str(self.system_wallet_address), address, int(amount * 10 ** 6))
+            .build()
+            .sign(private_key)
+        )
+        return txn.broadcast().wait()
 
     def __str__(self):
         return 'Processing settings'
@@ -175,26 +206,35 @@ class Wallet(models.Model):
     public_key = models.CharField(max_length=1024)
 
     def transfer(self, recipient_address, amount):
+        print(amount)
         tron = Tron(network="nile") if settings.DEBUG else Tron()
         token_address = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"
         token_contract = tron.get_contract(token_address)
         private_key = PrivateKey(bytes.fromhex(str(self.private_key)))
         address = private_key.public_key.to_base58check_address()
         precision = token_contract.functions.decimals()
-        print(recipient_address)
         txn = (
             token_contract.functions.transfer(recipient_address, int(amount * 10 ** precision))
             .with_owner(address)
             .build()
             .sign(private_key)
         )
-        return txn.broadcast().wait()
+        result = txn.broadcast().wait()
+        Settings.objects.first().transfer_trx(self.address, float(result['fee'])/(10**6))
+        return result
 
     def balance(self):
         client = Tron(network="nile") if settings.DEBUG else Tron()
         cntr = client.get_contract("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj" if settings.DEBUG else "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")
         precision = cntr.functions.decimals()
         return cntr.functions.balanceOf(str(self.address)) / 10 ** precision
+
+    def trx_balance(self):
+        try:
+            client = Tron(network="nile") if settings.DEBUG else Tron()
+            return float(client.get_account_balance(str(self.address)))
+        except Exception as e:
+            return str(e)
 
     def __str__(self):
         return self.address
@@ -234,16 +274,19 @@ class Customer(User):
         total_balance = self.balance_set.aggregate(
             total_balance=models.Sum(models.F('amount') / models.F('balance_link__currency__denomination'))
         ).get('total_balance', 0)
-        return round(total_balance, 2) or 0
+        return round(total_balance, 2) if total_balance else 0
 
     def frozen_balance(self):
         total_balance = self.balance_set.aggregate(
             total_balance=models.Sum(models.F('frozen') / models.F('balance_link__currency__denomination'))
         ).get('total_balance', 0)
-        return round(total_balance, 2) or 0
+        return round(total_balance, 2) if total_balance else 0
 
     def notifications(self):
         return self.notifications_set.filter(read=False).all()[::-1]
+
+    def notifications_first(self):
+        return self.notifications_set.filter(read=False).all()[::-1][0].id if self.notifications_set.filter(read=False).all() else -1
 
     def unread_notifications(self):
         return len(self.notifications_set.filter(read=False).all())

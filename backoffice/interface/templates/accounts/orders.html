@@ -68,6 +68,25 @@
     </div>
 </div>
 
+<script>
+    function startCountdown(duration, display) {
+        let timer = duration, minutes, seconds;
+        setInterval(function () {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.textContent = minutes + ":" + seconds;
+
+            if (--timer < 0) {
+                timer = duration;
+            }
+        }, 1000);
+    }
+</script>
+
 
 <table class="table">
     <thead>
@@ -86,7 +105,8 @@
         <th scope="col">Валюта</th>
         <th scope="col">Статус</th>
         {% if user.customer.account_type == "TRADER" %}
-        <th scope="col">Оставшееся время/действия</th>
+        <th scope="col">Действия</th>
+        <th scope="col">Время</th>
         {% else %}
         <th scope="col">Client ID</th>
         <th scope="col">External ID</th>
@@ -202,6 +222,9 @@
                     type="button"><i class="bi bi-x-lg"></i></button>
             <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
         </td>
+        <td>
+            <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created %}:{% seconds i.created %}</span>
+        </td>
         {% else %}
         <td>{{ i.client_id }}</td>
         <td>{{ i.external_id }}</td>
@@ -224,12 +247,12 @@
                 <div class="modal-body">
                     Проверьте пришла ли вам финальная сумма полностью, только после этого нажмине "Подтвердить"
                 </div>
-                <div class="modal-footer">
-                    <div id="footer{{i.id}}">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                        <a onclick="confirmOrder('{{ i.id }}');" type="submit" class="btn btn-primary">Подтвердить</a>
-                    </div>
-                    <div class="spinner-grow text-primary" style="text-align:center;display: none;" id="loader{{i.id}}" role="status">
+                <div class="modal-footer" style="justify-content: space-between;" id="footer{{i.id}}">
+                    <button style="color: #fff !important;" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <a style="color: #fff !important;" onclick="confirmOrder('{{ i.id }}');" type="submit" class="btn btn-primary">Подтвердить</a>
+                </div>
+                <div class="modal-footer" style="justify-content: center;display: none;" id="loader{{i.id}}">
+                    <div class="spinner-grow text-primary" role="status">
                         <span class="sr-only">Loading...</span>
                     </div>
                 </div>
@@ -256,6 +279,11 @@
             </div>
         </div>
     </div>
+    <script>
+        const countdownMinutes = {% all_seconds i.created%};
+        const countdownDisplay = document.getElementById('countdown{{ i.id }}');
+        startCountdown(countdownMinutes, countdownDisplay);
+    </script>
     {% elif i.side == 'OUT' and i.status == 1 %}
     <tr style="background-color: #FFD2D1;">
         <td>{{ i.id }}</td>
@@ -279,6 +307,9 @@
             <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderConfirm{{i.id}}"
                     type="button"><i class="bi bi-x-lg"></i></button>
         </td>
+        <td>
+            <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created %}:{% seconds i.created %}</span>
+        </td>
         {% else %}
         <td>{{ i.client_id }}</td>
         <td>{{ i.external_id }}</td>
@@ -288,6 +319,11 @@
         </td>
         {% endif %}
     </tr>
+    <script>
+        const countdownMinutes = {% all_seconds i.created%};
+        const countdownDisplay = document.getElementById('countdown{{ i.id }}');
+        startCountdown(countdownMinutes, countdownDisplay);
+    </script>
 
     <div class="modal fade" id="basicModal{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
          aria-hidden="true">
@@ -313,12 +349,17 @@
                         <span class="sub-sup-font-size gray-purple">{{ i.bank }}</span>
                     </div>
                 </div>
-                <div class="modal-footer" style="justify-content: space-around;">
-                    <button style="width: 45%" class="btn btn-info" onclick="paidOrder('{{ i.id }}')">
+                <div class="modal-footer" style="justify-content: space-around;" id="buttons">
+                    <button style="width: 45%;color: #fff !important;" class="btn btn-primary" onclick="paidOrder('{{ i.id }}')">
                         <span>Я перевел деньги</span>
                     </button>
-                    <a style="width: 45%" onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger">Деньги не
+                    <a style="width: 45%;color: #fff !important;" onclick="cancelOrder('{{ i.id }}')" class="btn btn-danger">Деньги не
                         переводил, отмена</a>
+                </div>
+                <div style="justify-content: center;" >
+                    <div class="spinner-grow text-primary" style="text-align:center;display: none;" id="loader" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
                 </div>
 
             </div>
@@ -363,6 +404,11 @@
         <td>
             <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
         </td>
+        <td>
+            {% if i.status == 0 or i.status == 1 or i.status == 2 %}
+                <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created %}:{% seconds i.created %}</span>
+            {% endif %}
+        </td>
         {% else %}
         <td>{{ i.client_id }}</td>
         <td>{{ i.external_id }}</td>
@@ -372,6 +418,11 @@
         </td>
         {% endif %}
     </tr>
+    <script>
+        const countdownMinutes = {% all_seconds i.created%};
+        const countdownDisplay = document.getElementById('countdown{{ i.id }}');
+        startCountdown(countdownMinutes, countdownDisplay);
+    </script>
     {% endif %}
     {% endfor %}
     </tbody>
@@ -413,26 +464,34 @@
     }
 
     function cancelOrder(orderId) {
-            fetch('/order/cancel/trader/' + orderId)
-                .then(response => response.json())
-                .then(data => {
-                        location.reload();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
+        var loader = document.getElementById('loader');
+        var footer = document.getElementById('buttons');
+        footer.style.display = 'none';
+        loader.style.display = 'inline-block';
+        fetch('/order/cancel/trader/' + orderId)
+            .then(response => response.json())
+            .then(data => {
+                    location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
 
     function paidOrder(orderId) {
-            fetch('/order/paid/' + orderId)
-                .then(response => response.json())
-                .then(data => {
-                        location.reload();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
+        var loader = document.getElementById('loader');
+        var footer = document.getElementById('buttons');
+        footer.style.display = 'none';
+        loader.style.display = 'inline-block';
+        fetch('/order/paid/' + orderId)
+            .then(response => response.json())
+            .then(data => {
+                    location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
 </script>
 
 {% if user.customer.account_type == "TRADER" %}
@@ -610,26 +669,6 @@
             rows[i].style.display = rowContainsFilter ? "" : "none";
         }
     });
-</script>
-<script>
-    function checkOrderStatus() {
-        // Отправка запроса на сервер
-        fetch('/order/last/')
-            .then(response => response.json())
-            .then(data => {
-                // Проверка статуса заказа
-                if (data.status != {{ orders.first.id }}) {
-                    location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    }
-
-    setInterval(() => {
-        checkOrderStatus();
-    }, 5000);
 </script>
 
 

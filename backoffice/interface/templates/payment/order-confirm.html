@@ -6,8 +6,9 @@
 
     <h2 class="h2 fw-semibold black mb-3-5">Оплата</h2>
     {% load custom_tags %}
-    <p class="gray-purple">Трейдер перевел статус транзакции в "Средства переведены" подтвердите полуение в течении <span
-            class="fw-semibold blue-light" id="countdown">{{ minutes }}:{{ seconds }}</span></p>
+    <p class="gray-purple">Трейдер перевел статус транзакции в "Средства переведены" подтвердите полуение в течении
+        <span
+                class="fw-semibold blue-light" id="countdown">{{ minutes }}:{{ seconds }}</span></p>
     <div class="d-flex justify-content-center align-items-end bg-light-gray rounded-4 p-3 mb-2 mt-4">
         <span class="h2 fw-semibold black m-0 mr-1">{{ amount }}</span>
         <span class="pb-1 sub-sup-font-size gray-purple">RUB</span>
@@ -18,17 +19,25 @@
     <div class="d-flex justify-content-center m-3">
         <img src="{% static '/icons/arrow-down.svg' %}" alt="">
     </div>
-    <button onclick="confirmOrder('{{ order_id }}', '{{ key }}')" class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
-        <img class="mr-2" src="{% static '/icons/check.svg' %}" alt="">
-        <span>Деньги получены</span>
-    </button>
-    <div class="d-flex justify-content-center">
-        <div class="d-flex align-items-center cursor-pointer">
-            <img class="mr-2" src="{% static '/icons/close-red.svg' %}" alt="">
-            <a onclick="cancelOrder('{{ order_id }}')" class="text-error fw-semibold" style="color:#B42318">Деньги не получены</a>
+    <div id="buttons">
+        <button onclick="confirmOrder('{{ order_id }}', '{{ key }}')" type="button"
+                class="d-flex justify-content-center align-items-center bg-blue-light rounded-3 fw-semibold border-none mb-3">
+            <img class="mr-2" src="{% static '/icons/check.svg' %}" alt="">
+            <span>Деньги получены</span>
+        </button>
+        <div class="d-flex justify-content-center">
+            <div class="d-flex align-items-center cursor-pointer">
+                <img class="mr-2" src="{% static '/icons/close-red.svg' %}" alt="">
+                <a onclick="cancelOrder('{{ order_id }}')" class="text-error fw-semibold" style="color:#B42318">Деньги
+                    не получены</a>
+            </div>
         </div>
     </div>
-    <br><p style="color: gray;font-size: 10px">ID: {{ order_id }}</p>
+    <div class="spinner-grow text-primary" style="text-align:center;display: none;" id="loader" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+    <br>
+    <p style="color: gray;font-size: 10px">ID: {{ order_id }}</p>
 </form>
 <script>
     function startCountdown(duration, display) {
@@ -84,15 +93,22 @@
         }
 
     function confirmOrder(orderId, key) {
+            var loader = document.getElementById('loader');
+            var footer = document.getElementById('buttons');
+            footer.style.display = 'none';
+            loader.style.display = 'inline-block';
             fetch('/order/confirm/' + orderId + '/?key=' + key)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.status != {{ status }}) {
-                        location.reload();
+                    if (data.status == -1) {
+                        footer.style.display = 'inline-block';
+                        loader.style.display = 'none';
+                        //location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+                        footer.style.display = 'inline-block';
+                        loader.style.display = 'none';
                 });
         }
 

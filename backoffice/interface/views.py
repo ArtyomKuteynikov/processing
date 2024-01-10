@@ -42,6 +42,21 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 DEPOSIT_ADDRESS = "TVM7MvLEaD7GSWbgy4jkcLnFCXuEjF1RfJ"
 
 
+def generate_wallet():
+    tron = Tron(network="nile") if DEBUG else Tron()
+    addr = tron.generate_address()
+    wallet = Wallet(
+        hex_address=addr['hex_address'],
+        address=addr['base58check_address'],
+        private_key=addr['private_key'],
+        public_key=addr['public_key']
+    )
+    wallet.save()
+    settings = Settings.objects.first()
+    settings.transfer_trx(wallet.address, 20)
+    return wallet
+
+
 def is_user_exists(email, phone):
     return Customer.objects.filter(email=email).exists() or \
         Customer.objects.filter(phone=phone).exists()
@@ -489,15 +504,7 @@ def transactions_view(request):
     if request.user.customer.wallet:
         address = request.user.customer.wallet.address
     else:
-        tron = Tron(network="nile") if DEBUG else Tron()
-        addr = tron.generate_address()
-        wallet = Wallet(
-            hex_address=addr['hex_address'],
-            address=addr['base58check_address'],
-            private_key=addr['private_key'],
-            public_key=addr['public_key']
-        )
-        wallet.save()
+        wallet = generate_wallet()
         customer = Customer.objects.get(id=request.user.id)
         customer.wallet = wallet
         customer.save()
@@ -572,15 +579,7 @@ def orders_view(request):
     if request.user.customer.wallet:
         address = request.user.customer.wallet.address
     else:
-        tron = Tron(network="nile") if DEBUG else Tron()
-        addr = tron.generate_address()
-        wallet = Wallet(
-            hex_address=addr['hex_address'],
-            address=addr['base58check_address'],
-            private_key=addr['private_key'],
-            public_key=addr['public_key']
-        )
-        wallet.save()
+        wallet = generate_wallet()
         customer = Customer.objects.get(id=request.user.id)
         customer.wallet = wallet
         customer.save()
@@ -809,15 +808,7 @@ def realise_crypro(request, order_id):
         if order.sender.wallet:
             merchant_wallet = order.sender.wallet
         else:
-            tron = Tron(network="nile") if DEBUG else Tron()
-            addr = tron.generate_address()
-            wallet = Wallet(
-                hex_address=addr['hex_address'],
-                address=addr['base58check_address'],
-                private_key=addr['private_key'],
-                public_key=addr['public_key']
-            )
-            wallet.save()
+            wallet = generate_wallet()
             customer = Customer.objects.get(id=order.sender.id)
             customer.wallet = wallet
             customer.save()
@@ -897,15 +888,7 @@ def realise_crypro_trader(request, order_id):
         if order.sender.wallet:
             merchant_wallet = order.sender.wallet
         else:
-            tron = Tron(network="nile") if DEBUG else Tron()
-            addr = tron.generate_address()
-            wallet = Wallet(
-                hex_address=addr['hex_address'],
-                address=addr['base58check_address'],
-                private_key=addr['private_key'],
-                public_key=addr['public_key']
-            )
-            wallet.save()
+            wallet = generate_wallet()
             customer = Customer.objects.get(id=order.sender.id)
             customer.wallet = wallet
             customer.save()
@@ -1108,12 +1091,12 @@ def order_status(request, order_id):
     return JsonResponse({'status': order.status})
 
 
-def order_last(request):
-    orders = Order.objects.filter(
-        (Q(sender=request.user) | Q(trader=request.user))).all().order_by('-created')
-    if not orders:
+@login_required
+def notification_last(request):
+    notifications = request.user.customer.notifications()
+    if not notifications:
         return JsonResponse({'status': -1})
-    return JsonResponse({'status': orders[0].id})
+    return JsonResponse({'status': notifications[0].id})
 
 
 @login_required
@@ -1127,15 +1110,7 @@ def withdrawals_view(request):
     if request.user.customer.wallet:
         address = request.user.customer.wallet.address
     else:
-        tron = Tron(network="nile") if DEBUG else Tron()
-        addr = tron.generate_address()
-        wallet = Wallet(
-            hex_address=addr['hex_address'],
-            address=addr['base58check_address'],
-            private_key=addr['private_key'],
-            public_key=addr['public_key']
-        )
-        wallet.save()
+        wallet = generate_wallet()
         customer = Customer.objects.get(id=request.user.id)
         customer.wallet = wallet
         customer.save()
@@ -1486,6 +1461,10 @@ def withdrawals(request):
                 status='NEW'
             )
             withdrawal.save()
+            balance = Balance.objects.filter(account=withdrawal.customer, balance_link=withdrawal.currency).first()
+            balance.frozen = balance.frozen + withdrawal.amount
+            balance.amount = balance.amount - withdrawal.amount
+            balance.save()
     return redirect('withdrawals')
 
 

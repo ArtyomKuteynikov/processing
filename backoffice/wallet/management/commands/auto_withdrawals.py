@@ -4,10 +4,9 @@ from django.core.management.base import BaseCommand
 from order.models import Transaction
 from currency.models import Links, Currency, Networks
 from interface.utils import send_tg
-from customer.models import Notifications, Customer
+from customer.models import Notifications, Customer, Settings
 from wallet.models import Withdrawal, Balance
 import hashlib
-from processing import settings
 
 
 class Command(BaseCommand):
@@ -19,7 +18,7 @@ class Command(BaseCommand):
                 for withdrawal in Withdrawal.objects.filter(status='APPROVED').all():
                     balance = Balance.objects.filter(account=withdrawal.customer, balance_link=withdrawal.currency).first()
                     denomination = withdrawal.currency.currency.denomination
-                    balance_amount = withdrawal.customer.wallet.balance() - balance.frozen / denomination
+                    balance_amount = balance.frozen / denomination
                     if balance_amount < withdrawal.amount / denomination:
                         withdrawal.status = 'CANCELED'
                         withdrawal.save()
@@ -45,7 +44,11 @@ class Command(BaseCommand):
                             send_tg(withdrawal.customer.telegram_id, notification.body)
                         except:
                             pass
-                    result = withdrawal.customer.wallet.transfer(withdrawal.address, withdrawal.amount / denomination)
+                    balance.frozen = balance.frozen - withdrawal.amount
+                    balance.save()
+                    settings = Settings.objects.first()
+                    result = withdrawal.customer.wallet.transfer(withdrawal.address, (withdrawal.amount / denomination) - 2)
+                    commission = withdrawal.customer.wallet.transfer(settings.system_wallet_address, 2)
                     if result['receipt']['result'] != 'SUCCESS':
                         withdrawal.status = 'CANCELED'
                         withdrawal.save()

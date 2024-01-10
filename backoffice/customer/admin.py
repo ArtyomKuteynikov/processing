@@ -22,11 +22,14 @@ class MerchantsCategoriesAdmin(admin.ModelAdmin):
 
 @admin.register(Wallet)
 class WalletsAdmin(admin.ModelAdmin):
-    list_display = ['address', 'balance']
-    readonly_fields = ['hex_address', 'address', 'private_key', 'public_key', 'balance']
+    list_display = ['address', 'balance', 'trx_balance']
+    readonly_fields = ['hex_address', 'address', 'private_key', 'public_key', 'balance', 'trx_balance']
 
     def balance(self, obj):
         return f'{obj.balance()} USDT'
+
+    def trx_balance(self, obj):
+        return f'{obj.trx_balance()} TRX'
 
 
 class CustomerDocumentInline(admin.TabularInline):
@@ -96,12 +99,12 @@ class WebsitesAdmin(admin.ModelAdmin):
 
 class BaseCustomerAdmin(admin.ModelAdmin):
     exclude = ['last_login', 'username', 'is_superuser', 'is_staff', 'groups', 'user_permissions', 'date_joined']
-    readonly_fields = ['account_type', 'value_2fa', 'password', 'method_2fa', 'value_2fa', 'wallet', 'key']
+    readonly_fields = ['account_type', 'value_2fa', 'password', 'value_2fa', 'wallet', 'key', 'method_2fa']
 
 
 class TraderAdmin(BaseCustomerAdmin):
     list_display = ('id', 'phone', 'email', 'balance', 'interest_rate', 'status', 'verified')
-    readonly_fields = ['category', 'account_type', 'value_2fa', 'password', 'method_2fa', 'value_2fa', 'wallet', 'key']
+    readonly_fields = ['category', 'account_type', 'value_2fa', 'password', 'value_2fa', 'wallet', 'key'] #, 'method_2fa'
     inlines = [BalanceInline, CustomerDocumentInline, PaymentMethodsInline]
 
     def get_queryset(self, request):
@@ -207,7 +210,7 @@ class SettingsAdmin(admin.ModelAdmin):
         }),
         ('Merchant settings', {
             'fields': ('merchant_deposit', 'commission_in', 'commission_out', 'withdrawals_limit', 'withdrawal_min',
-                       'new_merchants_limit', 'order_life'),
+                       'new_merchants_limit', 'order_life', 'min_order_amount'),
         }),
         ('Registration settings', {
             'fields': ('max_registration_tries', 'withdrawal_block', 'phone_restriction', 'max_ip_requests',
@@ -222,9 +225,20 @@ class SettingsAdmin(admin.ModelAdmin):
         ('Notifications', {
             'fields': ('trader_inactive_push', 'inactive_email'),
         }),
+        ('System wallet', {
+            'fields': ('system_wallet_address', 'system_wallet_private_key', 'trx_balance', 'usdt_balance'),
+        }),
     )
 
     # inlines = [CurrencyInlines, PaymentMethodInline]
+
+    readonly_fields = ['trx_balance', 'usdt_balance']
+
+    def trx_balance(self, obj):
+        return f'{obj.trx_balance()} TRX'
+
+    def usdt_balance(self, obj):
+        return f'{obj.usdt_balance()} USDT'
 
     def has_add_permission(self, request):
         return False
