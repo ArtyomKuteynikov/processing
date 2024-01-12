@@ -1,3 +1,4 @@
+import requests
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -50,3 +51,19 @@ async def success(chat_id: str):
 async def cancel(chat_id: str, order_id: str):
     message_text = f"❌Транзакция ```{order_id}``` отменена"
     await bot.send_message(chat_id=chat_id, text=message_text, parse_mode="MarkdownV2")
+
+
+def send_tg(telegram_id, message):
+    url = f'https://api.telegram.org/bot{API_TOKEN}/sendMessage'
+    params = {
+        'chat_id': telegram_id,
+        'text': message,
+    }
+    try:
+        response = requests.post(url, params=params)
+        response.raise_for_status()
+        print(f"Сообщение успешно отправлено в Telegram для пользователя с ID {telegram_id}")
+        return 0
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при отправке сообщения в Telegram: {e}")
+        return 0

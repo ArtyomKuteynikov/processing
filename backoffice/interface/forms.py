@@ -42,14 +42,14 @@ class Step1Form(forms.Form):
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='')
     invite_code = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Инвайт код'}), label='')
     # telegram_id = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Telegram ID'}), label='')
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class Reset1Form(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='', )
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='')
     # telegram_id = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Telegram ID'}), label='')
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class Reset2Form(forms.Form):
@@ -60,7 +60,7 @@ class Reset2Form(forms.Form):
 class LoginForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='', )
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}), label='', )
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class OTPForm(forms.Form):
@@ -73,14 +73,14 @@ class RequestForm(forms.Form):
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='Телефон')
     website = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'https://example.com'}), label='Сайт-площадка')
     comment = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Категория', choices=CATEGORIES)
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class TraderRequestForm(forms.Form):
     CATEGORIES = [(i.id, i.__str__) for i in WebsitesCategories.objects.all()]
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='Email', )
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='Телефон')
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class MerchantForm(forms.Form):
@@ -88,14 +88,14 @@ class MerchantForm(forms.Form):
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='')
     # telegram_id = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Telegram ID'}), label='')
     invite_code = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Инвайт код'}), label='')
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class SupportForm(forms.Form):
     title = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Суть вашей проблемы'}), label='Тема')
     comment = forms.CharField(widget=forms.Textarea(attrs={'placeholder': 'подробно опишите проблему'}), label='Комментарий')
     file = forms.FileField(label='Файл')
-    # captcha = ReCaptchaField(label='')
+    captcha = ReCaptchaField(label='')
 
 
 class SupportMessageForm(forms.Form):

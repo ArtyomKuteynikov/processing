@@ -92,8 +92,8 @@ class Statistics(Transaction):
 class Order(models.Model):
     sender = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='order_sender')
     trader = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='trader', null=True)
-    input_link = models.ForeignKey(Links, on_delete=models.CASCADE, related_name='order_input', null=True)
-    output_link = models.ForeignKey(Links, on_delete=models.CASCADE, related_name='order_output', null=True)
+    input_link = models.ForeignKey(Links, on_delete=models.CASCADE, related_name='order_input', null=True)  # RUB
+    output_link = models.ForeignKey(Links, on_delete=models.CASCADE, related_name='order_output', null=True)  # USDT
     order_site = models.ForeignKey(Websites, on_delete=models.CASCADE, null=True)
     input_amount = models.FloatField(null=True)
     output_amount = models.FloatField(null=True)

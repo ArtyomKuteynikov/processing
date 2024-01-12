@@ -97,7 +97,7 @@ class Settings(models.Model):
 
     merchant_deposit = models.IntegerField(verbose_name="Депозит мерчант (лимит)")
     commission_in = models.IntegerField(verbose_name="Комиссия системы инвойс клиентам")
-    commission_out = models.IntegerField(verbose_name="Комиссия системы вывод")
+    commission_out = models.IntegerField(verbose_name="Комиссия системы выводzobv средства клиентам")
     withdrawals_limit = models.IntegerField(verbose_name="Кол-во заявок мерчанта на вывод в сутки")
     withdrawal_min = models.IntegerField(verbose_name="Лимит мерчанта на минимальную сумму вывода")
     new_merchants_limit = models.IntegerField(verbose_name="Лимиты для новых мерчантов")
@@ -148,6 +148,7 @@ class Settings(models.Model):
         private_key = PrivateKey(bytes.fromhex(str(self.system_wallet_private_key)))
         txn = (
             client.trx.transfer(str(self.system_wallet_address), address, int(amount * 10 ** 6))
+            .fee_limit(15_000_000)
             .build()
             .sign(private_key)
         )
@@ -216,6 +217,7 @@ class Wallet(models.Model):
         txn = (
             token_contract.functions.transfer(recipient_address, int(amount * 10 ** precision))
             .with_owner(address)
+            .fee_limit(15_000_000)
             .build()
             .sign(private_key)
         )

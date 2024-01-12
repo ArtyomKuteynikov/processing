@@ -19,10 +19,11 @@ from config.database import engine, get_async_session
 from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload, subqueryload, selectinload
 from config.main import Settings, LINK
-from telegram_bot.order import start, marked_as_payed, success, cancel, out_order
+from telegram_bot.order import start, marked_as_payed, success, cancel, out_order, send_tg
 from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
-from models import Customer, Order, Balance, Link, Currency, ExchangeDirection, TraderPaymentMethod, User, Network, Websites, Transaction, SettingsModel
+from models import Customer, Order, Balance, Link, Currency, ExchangeDirection, TraderPaymentMethod, User, Network, \
+    Websites, Transaction, SettingsModel, Notification
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi_pagination import Page, add_pagination, paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
@@ -142,15 +143,28 @@ async def timeout_limit(session: AsyncSession, order_id: int):
     order = await session.execute(select(Order).where(Order.id == order_id))
     order = order.fetchone()
     if order:
-        if order[0].side == "OUT":
+        if order[0].status in [0, 2] and order[0].side == "OUT":
             balance = await session.execute(
                 select(Balance).where((Balance.account_id == order[0].sender_id) & (Balance.balance_link_id == order[0].output_link_id)))
             balance = balance.fetchone()
-            balance[0].amount = balance[0].amount + order[0].output_amount
-            balance[0].frozen = balance[0].frozen - order[0].output_amount
-            transaction = await session.execute(select(Transaction).where(Transaction.other_id_1 == order[0].id))
-            transaction = transaction.fetchone()
-            if transaction:
+            transactions = await session.execute(select(Transaction).where(Transaction.other_id_1 == order[0].id))
+            transactions = transactions.fetchall()
+            for transaction in transactions:
+                balance[0].amount = balance[0].amount + transaction[0].amount
+                balance[0].frozen = balance[0].frozen - transaction[0].amount
+                transaction[0].status = 4
+                transaction[0].finished = True
+                await session.commit()
+        elif order[0].status in [0, 1] and order[0].side == 'IN':
+            balance = await session.execute(
+                select(Balance).where(
+                    (Balance.account_id == order[0].trader_id) & (Balance.balance_link_id == order[0].output_link_id)))
+            balance = balance.fetchone()
+            transactions = await session.execute(select(Transaction).where(Transaction.other_id_1 == order[0].id))
+            transactions = transactions.fetchall()
+            for transaction in transactions:
+                balance[0].amount = balance[0].amount + transaction[0].amount
+                balance[0].frozen = balance[0].frozen - transaction[0].amount
                 transaction[0].status = 4
                 transaction[0].finished = True
                 await session.commit()
@@ -159,7 +173,16 @@ async def timeout_limit(session: AsyncSession, order_id: int):
             await session.commit()
             trader = await session.execute(select(Customer).where(Customer.user_ptr_id == order[0].trader_id))
             trader = trader.first()
-            #await cancel(trader[0].telegram_id, order[0].uuid)
+            notification = Notification(
+                customer_id=trader[0].user_ptr_id,
+                title=f"Ордер №{order[0].id} таймаут",
+                body=f"Ордер отменен по таймауту у клиента",
+                link='/orders',
+                category='order'
+            )
+            session.add(notification)
+            await session.commit()
+            send_tg(trader[0].telegram_id, f"Ордер №{order[0].id} отменен по таймауту у клиента")
         elif (order[0].status in [2] and order[0].side == 'IN') or (order[0].status in [1] and order[0].side == 'OUT'):
             order[0].status = 6
             await session.commit()
@@ -168,7 +191,16 @@ async def timeout_limit(session: AsyncSession, order_id: int):
             if trader:
                 trader[0].status = 'Inactive'
                 await session.commit()
-                #await cancel(trader[0].telegram_id, order[0].uuid)
+                notification = Notification(
+                    customer_id=trader[0].user_ptr_id,
+                    title=f"Ордер №{order[0].id} таймаут",
+                    body=f"Ордер отменен по таймауту, ваш статус изменен на НЕАКТИВЕН",
+                    link='/orders',
+                    category='order'
+                )
+                session.add(notification)
+                await session.commit()
+                send_tg(trader[0].telegram_id, f"Ордер №{order[0].id} отменен по таймауту, ваш статус изменен на НЕАКТИВЕН")
 
 
 async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
@@ -196,17 +228,6 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
         quantity = round(data.quantity * currency[0].denomination)
     else:
         return
-    if data.side == "OUT":
-        balance = await session.execute(select(Balance).where((Balance.account_id == user_id) & (Balance.balance_link_id == output_link[0].id)))
-        balance = balance.fetchone()
-        if not balance:
-            return
-        if balance[0].amount < amount:
-            return
-        else:
-            balance[0].amount = balance[0].amount - amount
-            balance[0].frozen = balance[0].frozen + amount
-
     trader_id = None
     order_id = str(uuid.uuid4())
     new_order = Order(
@@ -229,24 +250,6 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     session.add(new_order)
     order = new_order
     await session.commit()
-    if data.side == "OUT":
-        transaction = Transaction(
-            sender_id=order.sender_id,
-            receiver_id=order.sender_id,
-            site_id=order.order_site_id,
-            link_id=order.output_link_id,
-            amount=amount,
-            finished=False,
-            type=5,
-            status=2,
-            counted='1',
-            other_id_1=order.id,
-            category='Ордер клиента',
-            created=datetime.datetime.now(),
-            updated=datetime.datetime.now(),
-        )
-        session.add(transaction)
-        await session.commit()
     return new_order
 
 

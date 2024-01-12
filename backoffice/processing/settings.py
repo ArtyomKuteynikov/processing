@@ -28,7 +28,7 @@ SECRET_KEY = os.getenv("SECRET_SYSTEM")
 # SECURITY WARNING: don't run with debug turned on in production!
 
 DEBUG = True
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '213.171.9.80']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '213.171.9.80', '91.245.226.64']
 
 # Application definition
 
@@ -55,8 +55,8 @@ INSTALLED_APPS = [
     'processing.templatetags.custom_tags'
 ]
 
-RECAPTCHA_PUBLIC_KEY = '6LfrSykpAAAAAM20xfuM4CI8nbs3FJ8BbJXJ8cyi'
-RECAPTCHA_PRIVATE_KEY = '6LfrSykpAAAAAJreUGqaPNV02Kyf_ROkSuNILu5F'
+RECAPTCHA_PUBLIC_KEY = '6LeH8k4pAAAAABg3WLF0QqjkvaY06UzfnAoiJOA8'
+RECAPTCHA_PRIVATE_KEY = '6LeH8k4pAAAAAMf9Z1lqdNuU0yb33jGnZJUuLSvT'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

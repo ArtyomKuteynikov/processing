@@ -6,6 +6,8 @@ from customer.models import Notifications
 from django.http import HttpResponse
 
 from .models import Transaction, Order, Statistics
+from wallet.models import Balance
+from customer.models import Settings
 from interface.utils import send_tg
 
 
@@ -44,6 +46,133 @@ class OrderAdmin(admin.ModelAdmin):
 
     def amount_counted(self, obj):
         return obj.input_amount/obj.input_link.currency.denomination if obj.input_link else 0
+
+    def save_model(self, request, obj, form, change):
+        if change and 'status' in form.changed_data:
+            new_status = form.cleaned_data['status']
+            if new_status == 12:
+                if obj.side == 'IN':
+                    balance = Balance.objects.filter(balance_link=obj.output_link, account=obj.trader).first()
+                    denomination = obj.output_link.currency.denomination
+                    transactions = Transaction.objects.filter(other_id_1=obj.id, status=2).all()
+                    for transaction in transactions:
+                        balance.frozen = round(balance.frozen - transaction.amount, 2)
+                        balance.save()
+                        transaction.status = 4
+                        transaction.finished = True
+                        transaction.save()
+                    balance.amount = int(obj.trader.wallet.balance() * denomination) - balance.frozen
+                    balance.save()
+                else:
+                    balance = Balance.objects.filter(balance_link=obj.output_link, account=obj.sender).first()
+                    denomination = obj.output_link.currency.denomination
+                    transactions = Transaction.objects.filter(other_id_1=obj.id, status=2).all()
+                    for transaction in transactions:
+                        if transaction.type in [4, 5, 2]:
+                            transaction_data = transaction.sender.wallet.transfer(obj.trader.wallet.address,
+                                                                                  transaction.amount / denomination)
+                        else:
+                            transaction_data = transaction.sender.wallet.transfer(
+                                Settings.objects.first().system_wallet_address, transaction.amount / denomination)
+                        print(transaction_data)
+                        if transaction_data['receipt']['result'] == 'SUCCESS':
+                            balance.frozen = round(balance.frozen - transaction.amount, 2)
+                            balance.save()
+                            transaction.status = 1
+                            transaction.finished = True
+                            transaction.transaction_id = transaction_data['id']
+                            transaction.save()
+                    balance.amount = int(obj.sender.wallet.balance() * denomination) - balance.frozen
+                    balance.save()
+                notification = Notifications(
+                    customer=obj.sender,
+                    title=f"Решение по ордеру №{obj.id}",
+                    body=f"Ордер решен в пользу трейдера",
+                    link='/orders',
+                    category='order'
+                )
+                notification.save()
+                try:
+                    send_tg(obj.sender.telegram_id, notification.body)
+                except Exception as e:
+                    print(e)
+                notification = Notifications(
+                    customer=obj.trader,
+                    title=f"Решение по ордеру №{obj.id}",
+                    body=f"Ордер решен в Вашу пользу",
+                    link='/orders',
+                    category='order'
+                )
+                notification.save()
+                try:
+                    send_tg(obj.trader.telegram_id, notification.body)
+                except Exception as e:
+                    print(e)
+            elif new_status == 11:
+                if obj.side == 'IN':
+                    balance = Balance.objects.filter(balance_link=obj.output_link, account=obj.trader).first()
+                    denomination = obj.output_link.currency.denomination
+                    transactions = Transaction.objects.filter(other_id_1=obj.id, status=2).all()
+                    for transaction in transactions:
+                        if transaction.type in [4, 5, 2]:
+                            transaction_data = transaction.sender.wallet.transfer(obj.sender.wallet.address,
+                                                                                  transaction.amount / denomination)
+                        else:
+                            transaction_data = transaction.sender.wallet.transfer(
+                                Settings.objects.first().system_wallet_address, transaction.amount / denomination)
+                        if transaction_data['receipt']['result'] == 'SUCCESS':
+                            balance.frozen = round(balance.frozen - transaction.amount, 2)
+                            balance.save()
+                            transaction.status = 1
+                            transaction.finished = True
+                            transaction.transaction_id = transaction_data['id']
+                            transaction.save()
+                    balance.amount = int(obj.trader.wallet.balance() * denomination) - balance.frozen
+                    balance.save()
+                else:
+                    balance = Balance.objects.filter(balance_link=obj.output_link, account=obj.sender).first()
+                    denomination = obj.output_link.currency.denomination
+                    transactions = Transaction.objects.filter(other_id_1=obj.id, status=2).all()
+                    for transaction in transactions:
+                        balance.frozen = round(balance.frozen - transaction.amount, 2)
+                        balance.save()
+                        transaction.status = 4
+                        transaction.finished = True
+                        transaction.save()
+                    balance.amount = int(obj.sender.wallet.balance() * denomination) - balance.frozen
+                    balance.save()
+                notification = Notifications(
+                    customer=obj.sender,
+                    title=f"Решение по ордеру №{obj.id}",
+                    body=f"Ордер решен в Вашу пользу",
+                    link='/orders',
+                    category='order'
+                )
+                notification.save()
+                try:
+                    send_tg(obj.sender.telegram_id, notification.body)
+                except Exception as e:
+                    print(e)
+                notification = Notifications(
+                    customer=obj.trader,
+                    title=f"Решение по ордеру №{obj.id}",
+                    body=f"Ордер решен в пользу отправителя",
+                    link='/orders',
+                    category='order'
+                )
+                notification.save()
+                try:
+                    send_tg(obj.trader.telegram_id, notification.body)
+                except Exception as e:
+                    print(e)
+        denomination = obj.output_link.currency.denomination
+        trader_balance = Balance.objects.filter(balance_link=obj.output_link, account=obj.trader).first()
+        merchant_balance = Balance.objects.filter(balance_link=obj.output_link, account=obj.sender).first()
+        trader_balance.amount = int(obj.trader.wallet.balance() * denomination) - trader_balance.frozen
+        trader_balance.save()
+        merchant_balance.amount = int(obj.sender.wallet.balance() * denomination) - merchant_balance.frozen
+        merchant_balance.save()
+        super().save_model(request, obj, form, change)
 
 
 class StatisticsAdmin(admin.ModelAdmin):

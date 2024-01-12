@@ -280,9 +280,9 @@
         </div>
     </div>
     <script>
-        const countdownMinutes = {% all_seconds i.created%};
-        const countdownDisplay = document.getElementById('countdown{{ i.id }}');
-        startCountdown(countdownMinutes, countdownDisplay);
+        const countdownMinutes{{ i.id }} = {% all_seconds i.created%};
+        const countdownDisplay{{ i.id }} = document.getElementById('countdown{{ i.id }}');
+        startCountdown(countdownMinutes{{ i.id }}, countdownDisplay{{ i.id }});
     </script>
     {% elif i.side == 'OUT' and i.status == 1 %}
     <tr style="background-color: #FFD2D1;">
@@ -320,9 +320,9 @@
         {% endif %}
     </tr>
     <script>
-        const countdownMinutes = {% all_seconds i.created%};
-        const countdownDisplay = document.getElementById('countdown{{ i.id }}');
-        startCountdown(countdownMinutes, countdownDisplay);
+        const countdownMinutes{{ i.id }} = {% all_seconds i.created%};
+        const countdownDisplay{{ i.id }} = document.getElementById('countdown{{ i.id }}');
+        startCountdown(countdownMinutes{{ i.id }}, countdownDisplay{{ i.id }});
     </script>
 
     <div class="modal fade" id="basicModal{{ i.id }}" tabindex="-1" role="dialog" aria-labelledby="editObjectModalLabel"
@@ -419,9 +419,9 @@
         {% endif %}
     </tr>
     <script>
-        const countdownMinutes = {% all_seconds i.created%};
-        const countdownDisplay = document.getElementById('countdown{{ i.id }}');
-        startCountdown(countdownMinutes, countdownDisplay);
+        const countdownMinutes{{ i.id }} = {% all_seconds i.created%};
+        const countdownDisplay{{ i.id }} = document.getElementById('countdown{{ i.id }}');
+        startCountdown(countdownMinutes{{ i.id }}, countdownDisplay{{ i.id }});
     </script>
     {% endif %}
     {% endfor %}

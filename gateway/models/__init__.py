@@ -277,3 +277,15 @@ class SettingsModel(Base):
     trader_inactive_push = Column(Integer, nullable=False, doc="Пуш уведомление о “засыпании” трейдера")
     inactive_email = Column(Integer, nullable=False, doc="Email уведомление о неактивности")
 
+
+class Notification(Base):
+    __tablename__ = "customer_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customer.user_ptr_id"))
+    title = Column(String(128))
+    body = Column(String(1024))
+    link = Column(String(128))
+    category = Column(String(32))
+    read = Column(Boolean, default=False)
+

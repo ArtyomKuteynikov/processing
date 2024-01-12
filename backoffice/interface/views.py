@@ -42,6 +42,23 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 DEPOSIT_ADDRESS = "TVM7MvLEaD7GSWbgy4jkcLnFCXuEjF1RfJ"
 
 
+def unfreeze_money(order):
+    if order.side == 'IN':
+        balance = Balance.objects.filter(balance_link=order.output_link, account=order.trader).first()
+    else:
+        balance = Balance.objects.filter(balance_link=order.output_link, account=order.sender).first()
+    denomination = order.output_link.currency.denomination
+    transactions = Transaction.objects.filter(other_id_1=order.id).all()
+    for transaction in transactions:
+        balance.frozen = round(balance.frozen - transaction.amount, 2)
+        balance.save()
+        transaction.satus = 4
+        transaction.save()
+    balance.amount = int(order.trader.wallet.balance() * denomination) - balance.frozen
+    balance.save()
+    return
+
+
 def generate_wallet():
     tron = Tron(network="nile") if DEBUG else Tron()
     addr = tron.generate_address()
@@ -696,18 +713,6 @@ def order_start(request, order_id):
             return render(request, 'payment/popup-start.html',
                           {'methods': methods, 'amount': amount, 'form': form, 'order_id': order_id,
                            'side': side})
-            order.status = 4
-            order.save()
-            if order.side == 'OUT':
-                merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
-                merchant_balance.amount = merchant_balance.amount + order.output_amount
-                merchant_balance.frozen = merchant_balance.frozen - order.output_amount
-                merchant_balance.save()
-                transaction = Transaction.objects.get(other_id_1=order.id)
-                transaction.status = 4
-                transaction.finished = True
-                transaction.save()
-            return redirect('order-pay', order_id=order_id)
         card = sorted(trader_cards, key=lambda x: x.last_used)[0]
         order.trader = card.customer
         card.last_used = datetime.datetime.now()
@@ -715,10 +720,75 @@ def order_start(request, order_id):
         order.method = card
         order.status = 1
         order.save()
-        if order.side == 'OUT':
-            transaction = Transaction.objects.get(other_id_1=order.id)
-            transaction.receiver = card.customer
+        trader_commission = card.customer.interest_rate
+        if order.side == 'IN':
+            service_commission = Settings.objects.first().commission_in
+            balance = Balance.objects.filter(account=order.trader, balance_link=order.output_link).first()
+            balance.amount = balance.amount - round(order.output_amount * (1 - (trader_commission + service_commission) / 100)) + round(order.output_amount * service_commission / 100)
+            balance.frozen = balance.frozen + round(order.output_amount * (1 - (trader_commission + service_commission) / 100)) + round(order.output_amount * service_commission / 100)
+            balance.save()
+            transaction = Transaction(
+                sender_id=order.trader_id,
+                receiver_id=order.sender_id,
+                site_id=order.order_site_id,
+                link_id=order.output_link_id,
+                amount=round(order.output_amount * (1 - (trader_commission + service_commission) / 100)),
+                finished=True,
+                type=4,
+                status=2,
+                counted='1',
+                other_id_1=order.id,
+                category=f'Ордер #{order.id}',
+            )
             transaction.save()
+            transaction_commission = Transaction(
+                sender_id=order.trader_id,
+                receiver_id=order.trader_id,
+                site_id=order.order_site_id,
+                link_id=order.output_link_id,
+                amount=round(order.output_amount * service_commission / 100),
+                finished=True,
+                type=6,
+                status=2,
+                counted='1',
+                other_id_1=order.id,
+                category=f'Комиссия сервиса по ордеру #{order.id}',
+            )
+            transaction_commission.save()
+        else:
+            service_commission = Settings.objects.first().commission_out
+            balance = Balance.objects.filter(account=order.sender, balance_link=order.output_link).first()
+            balance.amount = balance.amount - round(order.output_amount * (1 + trader_commission / 100)) + round(order.output_amount * service_commission / 100)
+            balance.frozen = balance.frozen + round(order.output_amount * (1 + trader_commission / 100)) + round(order.output_amount * service_commission / 100)
+            balance.save()
+            transaction = Transaction(
+                sender_id=order.sender_id,
+                receiver_id=order.trader_id,
+                site_id=order.order_site_id,
+                link_id=order.output_link_id,
+                amount=round(order.output_amount * (1 + trader_commission / 100)),
+                finished=True,
+                type=5,
+                status=2,
+                counted='1',
+                other_id_1=order.id,
+                category=f'Ордер #{order.id}',
+            )
+            transaction.save()
+            transaction_commission = Transaction(
+                sender_id=order.sender_id,
+                receiver_id=order.sender_id,
+                site_id=order.order_site_id,
+                link_id=order.output_link_id,
+                amount=round(order.output_amount * service_commission / 100),
+                finished=True,
+                type=6,
+                status=2,
+                counted='1',
+                other_id_1=order.id,
+                category=f'Комиссия сервиса по ордеру #{order.id}',
+            )
+            transaction_commission.save()
         notification = Notifications(
             customer=card.customer,
             title=f"Ордер №{order.id}",
@@ -749,6 +819,7 @@ def order_view(request, order_id):
                 order.status = 5
                 order.save()
                 error_text = 'Ордер отменен'
+                unfreeze_money(order)
                 return render(request, 'payment/order-error.html', {'error_text': error_text, 'order_id': order_id})
             elif (order.status in [0, 1] and order.side == 'IN') or (order.status in [0, 2] and order.side == 'OUT'):
                 order.status = 6
@@ -801,10 +872,6 @@ def realise_crypro(request, order_id):
         return JsonResponse({'status': -1})
     key = request.GET.get('key')
     if pwd_context.verify(str(order.client_id), str(key)) and order.status == 2:
-        transaction = Transaction.objects.get(other_id_1=order.id)
-        transaction.status = 1
-        transaction.finished = True
-        transaction.save()
         if order.sender.wallet:
             merchant_wallet = order.sender.wallet
         else:
@@ -813,15 +880,27 @@ def realise_crypro(request, order_id):
             customer.wallet = wallet
             customer.save()
             merchant_wallet = wallet
+        if order.side == 'IN':
+            balance = Balance.objects.filter(balance_link=order.output_link, account=order.trader).first()
+        else:
+            balance = Balance.objects.filter(balance_link=order.output_link, account=order.sender).first()
+        denomination = order.output_link.currency.denomination
+        transactions = Transaction.objects.filter(other_id_1=order.id, status=2).all()
+        for transaction in transactions:
+            if transaction.type in [4, 5, 2]:
+                transaction_data = transaction.sender.wallet.transfer(order.trader.wallet.address, transaction.amount / denomination)
+            else:
+                transaction_data = transaction.sender.wallet.transfer(Settings.objects.first().system_wallet_address, transaction.amount / denomination)
+            if transaction_data['receipt']['result'] != 'SUCCESS':
+                return JsonResponse({'status': -1})
+            transaction.status = 1
+            transaction.finished = True
+            transaction.transaction_id = transaction_data['id']
+            transaction.save()
+            balance.frozen = round(balance.frozen - transaction.amount, 2)
+            balance.save()
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
-        denomination = order.output_link.currency.denomination
-        ''' merchant_balance.frozen = merchant_balance.frozen - order.output_amount
-        merchant_balance.amount = merchant_balance.amount - order.output_amount * order.trader.interest_rate / 100
-        trader_balance.amount = trader_balance.amount + order.output_amount'''
-        transaction_data = merchant_wallet.transfer(order.trader.wallet.address, order.output_amount / denomination)
-        if transaction_data['receipt']['result'] != 'SUCCESS':
-            return JsonResponse({'status': -1})
         merchant_wallet_balance = merchant_wallet.balance()
         if (merchant_balance.amount + merchant_balance.frozen) / denomination != merchant_wallet_balance:
             merchant_balance.amount = max(merchant_wallet_balance * denomination - merchant_balance.frozen, 0)
@@ -830,25 +909,6 @@ def realise_crypro(request, order_id):
             trader_balance.amount = max(trader_wallet_balance * denomination - trader_balance.frozen, 0)
         merchant_balance.save()
         trader_balance.save()
-        transaction.transaction_id = transaction_data['id']
-        transaction.save()
-        # TODO: fees
-        transaction_commission = Transaction(
-            sender_id=order.sender_id,
-            receiver_id=order.sender_id,
-            site_id=order.order_site_id,
-            link_id=order.output_link_id,
-            amount=order.output_amount * order.trader.interest_rate / 100,
-            finished=True,
-            type=6,
-            status=1,
-            counted='1',
-            other_id_1=order.id,
-            category='Комиссия',
-            created=datetime.datetime.now(),
-            updated=datetime.datetime.now()
-        )
-        transaction_commission.save()
         order.status = 3
         order.save()
         notification = Notifications(
@@ -893,16 +953,31 @@ def realise_crypro_trader(request, order_id):
             customer.wallet = wallet
             customer.save()
             merchant_wallet = wallet
+        if order.side == 'IN':
+            balance = Balance.objects.filter(balance_link=order.output_link, account=order.trader).first()
+        else:
+            balance = Balance.objects.filter(balance_link=order.output_link, account=order.sender).first()
+        denomination = order.output_link.currency.denomination
+        transactions = Transaction.objects.filter(other_id_1=order.id, status=2).all()
+        for transaction in transactions:
+            print(transaction.type)
+            if transaction.type in [4, 5, 2]:
+                transaction_data = transaction.sender.wallet.transfer(order.sender.wallet.address,
+                                                            transaction.amount / denomination)
+            else:
+                transaction_data = transaction.sender.wallet.transfer(Settings.objects.first().system_wallet_address,
+                                                            transaction.amount / denomination)
+            print(transaction_data)
+            if transaction_data['receipt']['result'] != 'SUCCESS':
+                return JsonResponse({'status': -1})
+            transaction.status = 1
+            transaction.finished = True
+            transaction.transaction_id = transaction_data['id']
+            transaction.save()
+            balance.frozen = round(balance.frozen - transaction.amount, 2)
+            balance.save()
         merchant_balance = Balance.objects.get(account=order.sender, balance_link=order.output_link)
         trader_balance = Balance.objects.get(account=order.trader, balance_link=order.output_link)
-        denomination = order.output_link.currency.denomination
-        '''merchant_balance.amount = merchant_balance.amount + order.output_amount - order.output_amount * order.trader.interest_rate / 100
-        trader_balance.amount = trader_balance.amount - order.output_amount  # + order.output_amount*order.trader.interest_rate/100
-        merchant_balance.save()
-        trader_balance.save()'''
-        transaction_data = order.trader.wallet.transfer(merchant_wallet.address, order.output_amount/denomination)
-        if transaction_data['receipt']['result'] != 'SUCCESS':
-            return JsonResponse({'status': -1})
         merchant_wallet_balance = merchant_wallet.balance()
         if (merchant_balance.amount + merchant_balance.frozen)/denomination != merchant_wallet_balance:
             merchant_balance.amount = max(merchant_wallet_balance*denomination - merchant_balance.frozen, 0)
@@ -911,40 +986,6 @@ def realise_crypro_trader(request, order_id):
             trader_balance.amount = max(trader_wallet_balance * denomination - trader_balance.frozen, 0)
         merchant_balance.save()
         trader_balance.save()
-        # TODO: fees
-        transaction = Transaction(
-            sender=order.trader,
-            receiver=order.sender,
-            site=order.order_site,
-            link=order.output_link,
-            amount=order.output_amount,
-            finished=True,
-            type=4,
-            status=1,
-            counted='1',
-            other_id_1=order.id,
-            category='Ордер клиента',
-            created=datetime.datetime.now(),
-            updated=datetime.datetime.now(),
-            transaction_id=transaction_data['id']
-        )
-        transaction.save()
-        transaction_commission = Transaction(
-            sender_id=order.sender_id,
-            receiver_id=order.sender_id,
-            site_id=order.order_site_id,
-            link_id=order.output_link_id,
-            amount=order.output_amount * order.trader.interest_rate / 100,
-            finished=True,
-            type=6,
-            status=1,
-            counted='1',
-            other_id_1=order.id,
-            category='Комиссия',
-            created=datetime.datetime.now(),
-            updated=datetime.datetime.now(),
-        )
-        transaction_commission.save()
         order.status = 3
         order.save()
         notification = Notifications(
@@ -967,7 +1008,6 @@ def realise_crypro_trader(request, order_id):
             category='order'
         )
         notification.save()
-
         try:
             send_tg(order.sender.telegram_id, notification.body)
         except Exception as e:
@@ -1040,6 +1080,7 @@ def order_cancel(request, order_id):
         return JsonResponse({'status': -1})
     order.status = 7
     order.save()
+    unfreeze_money(order)
     notification = Notifications(
         customer=order.trader,
         title=f"Ордер №{order.id} отменен",
@@ -1465,6 +1506,20 @@ def withdrawals(request):
             balance.frozen = balance.frozen + withdrawal.amount
             balance.amount = balance.amount - withdrawal.amount
             balance.save()
+            transaction = Transaction(
+                sender=withdrawal.customer,
+                receiver=withdrawal.customer,
+                link=withdrawal.currency,
+                amount=withdrawal.amount,
+                finished=False,
+                type=1,
+                status=2,
+                counted='1',
+                other_id_2=withdrawal.id,
+            )
+            transaction.save()
+            transaction.category = f"Вывод средств #{withdrawal.id}"
+            transaction.save()
     return redirect('withdrawals')
 
 

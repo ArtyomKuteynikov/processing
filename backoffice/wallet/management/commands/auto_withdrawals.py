@@ -18,19 +18,15 @@ class Command(BaseCommand):
                 for withdrawal in Withdrawal.objects.filter(status='APPROVED').all():
                     balance = Balance.objects.filter(account=withdrawal.customer, balance_link=withdrawal.currency).first()
                     denomination = withdrawal.currency.currency.denomination
-                    balance_amount = balance.frozen / denomination
-                    if balance_amount < withdrawal.amount / denomination:
+                    if withdrawal.customer.wallet.balance() * denomination < withdrawal.amount:
+                        balance.frozen = balance.frozen - withdrawal.amount
+                        balance.save()
+                        balance.amount = withdrawal.customer.wallet.balance() * denomination - balance.frozen
+                        balance.save()
                         withdrawal.status = 'CANCELED'
                         withdrawal.save()
-                        transaction = Transaction(
-                            sender=withdrawal.customer,
-                            receiver=withdrawal.customer,
-                            link=withdrawal.currency,
-                            amount=withdrawal.amount,
-                            finished=True,
-                            type=1,
-                            status=4
-                        )
+                        transaction = Transaction.objects.filter(other_id_2=withdrawal.id).first()
+                        transaction.status = 4
                         transaction.save()
                         notification = Notifications(
                             customer=withdrawal.customer,
@@ -44,7 +40,10 @@ class Command(BaseCommand):
                             send_tg(withdrawal.customer.telegram_id, notification.body)
                         except:
                             pass
+                        continue
                     balance.frozen = balance.frozen - withdrawal.amount
+                    balance.save()
+                    balance.amount = withdrawal.customer.wallet.balance() * denomination - balance.frozen
                     balance.save()
                     settings = Settings.objects.first()
                     result = withdrawal.customer.wallet.transfer(withdrawal.address, (withdrawal.amount / denomination) - 2)
@@ -52,15 +51,8 @@ class Command(BaseCommand):
                     if result['receipt']['result'] != 'SUCCESS':
                         withdrawal.status = 'CANCELED'
                         withdrawal.save()
-                        transaction = Transaction(
-                            sender=withdrawal.customer,
-                            receiver=withdrawal.customer,
-                            link=withdrawal.currency,
-                            amount=withdrawal.amount,
-                            finished=True,
-                            type=1,
-                            status=4
-                        )
+                        transaction = Transaction.objects.filter(other_id_2=withdrawal.id).first()
+                        transaction.status = 4
                         transaction.save()
                         notification = Notifications(
                             customer=withdrawal.customer,
@@ -77,17 +69,8 @@ class Command(BaseCommand):
                     else:
                         balance.amount = withdrawal.customer.wallet.balance() * denomination - balance.frozen
                         balance.save()
-                        transaction = Transaction(
-                            sender=withdrawal.customer,
-                            receiver=withdrawal.customer,
-                            link=withdrawal.currency,
-                            amount=withdrawal.amount,
-                            finished=True,
-                            type=1,
-                            status=1
-                        )
-                        transaction.save()
-                        transaction.category = f"Вывод средств #{transaction.id}"
+                        transaction = Transaction.objects.filter(other_id_2=withdrawal.id).first()
+                        transaction.status = 1
                         transaction.save()
                         notification = Notifications(
                             customer=withdrawal.customer,
