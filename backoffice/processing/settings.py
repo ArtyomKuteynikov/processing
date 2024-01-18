@@ -28,7 +28,9 @@ SECRET_KEY = os.getenv("SECRET_SYSTEM")
 # SECURITY WARNING: don't run with debug turned on in production!
 
 DEBUG = True
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '213.171.9.80', '91.245.226.64']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '213.171.9.80', '91.245.226.64', '51.81.69.113', 'processing.time4pay.io', 'time4pay.io']
+
+CSRF_TRUSTED_ORIGINS = ['https://processing.time4pay.io', 'https://*.127.0.0.1']
 
 # Application definition
 
@@ -55,8 +57,8 @@ INSTALLED_APPS = [
     'processing.templatetags.custom_tags'
 ]
 
-RECAPTCHA_PUBLIC_KEY = '6LeH8k4pAAAAABg3WLF0QqjkvaY06UzfnAoiJOA8'
-RECAPTCHA_PRIVATE_KEY = '6LeH8k4pAAAAAMf9Z1lqdNuU0yb33jGnZJUuLSvT'
+RECAPTCHA_PUBLIC_KEY = '6LcnoVEpAAAAAM8T_A4Wj1CTM7RhjzzGnZ9dCtP6'
+RECAPTCHA_PRIVATE_KEY = '6LcnoVEpAAAAAJwRjTLtHILznH0hNKIGOKgUpBvH'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

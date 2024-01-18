@@ -113,7 +113,7 @@ class Command(BaseCommand):
                 for customer in Customer.objects.filter(account_type="TRADER").all():
                     if customer.wallet:
                         get_transactions(customer.wallet.address, customer)
-                time.sleep(300)
+                time.sleep(180)
             except Exception as e:
                 print(e)
 

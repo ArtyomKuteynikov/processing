@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve myproject
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/root/gateway
+Environment="PATH=/root/gateway/venv/bin"
+ExecStart=/root/backoffice/venv/bin/uvicorn main:app --host 0.0.0.0 --port 5000 --workers 5 --proxy-headers --reload
+
+[Install]
+WantedBy=multi-user.target

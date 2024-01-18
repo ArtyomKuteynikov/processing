@@ -50,6 +50,23 @@ add_pagination(app)
 templates = Jinja2Templates(directory="templates")
 
 
+ORDER_STATUS = {
+    0: 'New',
+    1: 'Trader found',
+    2: 'Marked as payed',
+    3: 'Success',
+    4: 'Declined',
+    5: 'Timeout at user',
+    6: 'Timeout at trader',
+    7: 'Canceled by user',
+    8: 'Partially or incorrect payment',
+    9: 'Solved partially or incorrect payment by support',
+    10: 'Complaint',
+    11: 'Solved to sender',
+    12: 'Solved to trader',
+}
+
+
 def clean_phone(phone):
     return phone.replace('(', '').replace(')', '').replace('-', '').replace('+', '').replace(' ', '')
 
@@ -115,6 +132,17 @@ async def get_asset_by_link_id(id: int, session: AsyncSession):
         if user:
             return user[0].ticker
     return None
+
+
+async def get_asset_denomination(id: int, session: AsyncSession):
+    result = await session.execute(select(Link).where((Link.id == id)))
+    user = result.first()
+    if user:
+        result = await session.execute(select(Currency).where(Currency.id == user[0].currency_id))
+        user = result.first()
+        if user:
+            return user[0].denomination
+    return 1
 
 
 async def get_user_by_key(key: str, session: AsyncSession):
@@ -228,6 +256,13 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
         quantity = round(data.quantity * currency[0].denomination)
     else:
         return
+    result = await session.execute(
+        select(Balance).where((Balance.account_id == user_id) & (Balance.balance_link_id == output_link[0].id)))
+    balance = result.first()
+    if not balance:
+        return None
+    if balance[0].amount < amount and data.side == "OUT":
+        return None
     trader_id = None
     order_id = str(uuid.uuid4())
     new_order = Order(
@@ -366,18 +401,19 @@ async def order(order_id: int, key: str, session: AsyncSession = Depends(get_asy
     return JSONResponse(status_code=200, content={
         'order_id': order.id,
         'trader_id': order.trader_id,
-        'input_link_id': order.input_link_id,
-        'output_link_id': order.output_link_id,
+        'input_link_id': await get_asset_by_link_id(order.input_link_id, session),
+        'output_link_id': await get_asset_by_link_id(order.output_link_id, session),
         'order_site_id': order.order_site_id,
-        'input_amount': order.input_amount,
-        'output_amount': order.output_amount,
-        'create_at': int(order.created.timestamp() * 1000),
-        'updated_at': int(order.updated.timestamp() * 1000),
-        'status': 0,
+        'input_amount': order.input_amount / await get_asset_denomination(order.input_link_id, session),
+        'output_amount': order.output_amount / await get_asset_denomination(order.output_link_id, session),
+        'create_at': order.created.strftime("%d.%m.%Y %H:%M:%S"),
+        'updated_at': order.updated.strftime("%d.%m.%Y %H:%M:%S"),
+        'status': ORDER_STATUS[order.status],
         'side': order.side,
         'uuid': order.uuid,
         'client_id': order.client_id,
-        'external_id': order.external_id
+        'external_id': order.external_id,
+        'client_contact': order.client_contact
     })
 
 
@@ -407,7 +443,7 @@ async def balance(key: str, session: AsyncSession = Depends(get_async_session)):
     for i in balances:
         data.append({
             'currency': await get_asset_by_link_id(i[0].balance_link_id, session),
-            'amount': i[0].amount
+            'amount': i[0].amount / await get_asset_denomination(i[0].balance_link_id, session)
         })
     return JSONResponse(status_code=200, content={
         'balance': data

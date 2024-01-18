@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve myproject
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/root/backoffice
+Environment="PATH=/root/backoffice/venv/bin"
+ExecStart=/root/backoffice/venv/bin/python manage.py price_updater
+
+[Install]
+WantedBy=multi-user.target

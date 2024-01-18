@@ -86,6 +86,6 @@ class Command(BaseCommand):
                             pass
                         withdrawal.status = 'PAID'
                         withdrawal.save()
-                time.sleep(300)
+                time.sleep(180)
             except Exception as e:
                 print(e)

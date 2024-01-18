@@ -77,7 +77,6 @@ class RequestForm(forms.Form):
 
 
 class TraderRequestForm(forms.Form):
-    CATEGORIES = [(i.id, i.__str__) for i in WebsitesCategories.objects.all()]
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='Email', )
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='Телефон')
     captcha = ReCaptchaField(label='')
@@ -129,7 +128,10 @@ class WithdrawalForm(forms.Form):
             min_value=min_amount,
             max_value=max_amount
         )
-    LINKS = [(i.id, i.__str__) for i in Links.objects.all()]
+    try:
+        LINKS = [(i.id, i.__str__) for i in Links.objects.all()]
+    except:
+        LINKS = []
     # amount = forms.FloatField(widget=forms.NumberInput(attrs={'placeholder': 'Сумма'}), label='Сумма')
     link = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Валюта', choices=LINKS)
     address = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Адрес'}), label='Адрес')
@@ -137,5 +139,8 @@ class WithdrawalForm(forms.Form):
 
 
 class ChoseMethodForm(forms.Form):
-    METHODS = [(i.id, i.name) for i in PaymentMethods.objects.all()]
+    try:
+        METHODS = [(i.id, i.name) for i in PaymentMethods.objects.all()]
+    except:
+        METHODS = []
     method = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Банк', choices=METHODS)

@@ -112,7 +112,7 @@ def step1(request):
                 key=str(uuid.uuid4()),
                 lang_code='ru',
                 time_zone=0,
-                interest_rate=5
+                interest_rate=Settings.objects.first().fix_commission
             )
             customer.save()
             currency = Currency.objects.get(ticker='USDT')
@@ -461,7 +461,7 @@ def merchant1(request):
                 key=str(uuid.uuid4()),
                 lang_code='ru',
                 time_zone=0,
-                interest_rate=5
+                interest_rate=Settings.objects.first().fix_commission
             )
             customer.save()
             currency = Currency.objects.get(ticker='USDT')
@@ -506,6 +506,10 @@ def index(request):
 
 @login_required
 def transactions_view(request):
+    try:
+        request.user.customer
+    except:
+        return redirect('/admin')
     start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
     end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
     start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
@@ -579,7 +583,10 @@ def transactions_csv(request):
 
 @login_required
 def orders_view(request):
-    print(DEBUG)
+    try:
+        request.user.customer
+    except:
+        return redirect('/admin')
     start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
     end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
     start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
@@ -624,7 +631,7 @@ def orders_view(request):
     return render(request, 'accounts/orders.html',
                   {'orders': orders, 'start': start, 'finish': end, 'balances': balances, 'address': address,
                    'max_amount': max_amount, 'form': form, 'banks': banks, 'cards': cards, 'sites': sites,
-                   'output_links': output_links, 'statuses': statuses})
+                   'output_links': output_links, 'statuses': statuses, 'time_limit': Settings.objects.first().order_life * 60})
 
 
 @login_required
@@ -1142,6 +1149,10 @@ def notification_last(request):
 
 @login_required
 def withdrawals_view(request):
+    try:
+        request.user.customer
+    except:
+        return redirect('/admin')
     start = request.GET.get('date-start', (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))
     end = request.GET.get('date-finish', (datetime.datetime.now()).strftime('%Y-%m-%d'))
     start_date = datetime.datetime.strptime(start, '%Y-%m-%d')

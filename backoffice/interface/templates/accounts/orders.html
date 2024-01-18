@@ -223,7 +223,7 @@
             <a href="/complaint/{{ i.id }}" class="btn btn-info"><i class="bi bi-question-circle"></i></a>
         </td>
         <td>
-            <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created %}:{% seconds i.created %}</span>
+            <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created time_limit %}:{% seconds i.created time_limit %}</span>
         </td>
         {% else %}
         <td>{{ i.client_id }}</td>
@@ -280,7 +280,7 @@
         </div>
     </div>
     <script>
-        const countdownMinutes{{ i.id }} = {% all_seconds i.created%};
+        const countdownMinutes{{ i.id }} = {% all_seconds i.created time_limit %};
         const countdownDisplay{{ i.id }} = document.getElementById('countdown{{ i.id }}');
         startCountdown(countdownMinutes{{ i.id }}, countdownDisplay{{ i.id }});
     </script>
@@ -308,7 +308,7 @@
                     type="button"><i class="bi bi-x-lg"></i></button>
         </td>
         <td>
-            <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created %}:{% seconds i.created %}</span>
+            <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created time_limit %}:{% seconds i.created time_limit %}</span>
         </td>
         {% else %}
         <td>{{ i.client_id }}</td>
@@ -320,7 +320,7 @@
         {% endif %}
     </tr>
     <script>
-        const countdownMinutes{{ i.id }} = {% all_seconds i.created%};
+        const countdownMinutes{{ i.id }} = {% all_seconds i.created time_limit %};
         const countdownDisplay{{ i.id }} = document.getElementById('countdown{{ i.id }}');
         startCountdown(countdownMinutes{{ i.id }}, countdownDisplay{{ i.id }});
     </script>
@@ -406,7 +406,7 @@
         </td>
         <td>
             {% if i.status == 0 or i.status == 1 or i.status == 2 %}
-                <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created %}:{% seconds i.created %}</span>
+                <span class="fw-semibold blue-light" id="countdown{{ i.id }}">{% minutes i.created time_limit %}:{% seconds i.created time_limit %}</span>
             {% endif %}
         </td>
         {% else %}
@@ -419,7 +419,7 @@
         {% endif %}
     </tr>
     <script>
-        const countdownMinutes{{ i.id }} = {% all_seconds i.created%};
+        const countdownMinutes{{ i.id }} = {% all_seconds i.created time_limit %};
         const countdownDisplay{{ i.id }} = document.getElementById('countdown{{ i.id }}');
         startCountdown(countdownMinutes{{ i.id }}, countdownDisplay{{ i.id }});
     </script>

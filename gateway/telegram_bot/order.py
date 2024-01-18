@@ -4,7 +4,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardBut
 
 from config.main import LINK
 
-API_TOKEN = '6773531340:AAGKvgim-y1bijEi4ybq0tsXVILB3VpG4TA'
+API_TOKEN = '6851506746:AAF5S-FdMwFrVvYUx16YvvQvESpcudka2Jk'
 bot = Bot(token=API_TOKEN)
 
 

@@ -19,25 +19,22 @@ def divide(a, b):
 
 
 @register.simple_tag
-def minutes(created):
-    TIME_LIMIT = 600  # Settings.objects.first().order_life * 60
-    time_limit = TIME_LIMIT - (int(time.time()) - int(created.timestamp()))
+def minutes(created, time_limit):
+    time_limit = time_limit - (int(time.time()) - int(created.timestamp()))
     minutes = time_limit // 60
     return minutes
 
 
 @register.simple_tag
-def seconds(created):
-    TIME_LIMIT = 600  # Settings.objects.first().order_life * 60
-    time_limit = TIME_LIMIT - (int(time.time()) - int(created.timestamp()))
+def seconds(created, time_limit):
+    time_limit = time_limit - (int(time.time()) - int(created.timestamp()))
     seconds = time_limit % 60
     return seconds
 
 
 @register.simple_tag
-def all_seconds(created):
-    TIME_LIMIT = 600  # Settings.objects.first().order_life * 60
-    time_limit = TIME_LIMIT - (int(time.time()) - int(created.timestamp()))
+def all_seconds(created, time_limit):
+    time_limit = time_limit - (int(time.time()) - int(created.timestamp()))
     return time_limit
 
 

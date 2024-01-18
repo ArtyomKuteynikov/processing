@@ -13,6 +13,8 @@ from wallet.models import Balance
 from order.models import Transaction
 from currency.models import Currency, PaymentMethods
 from interface.utils import send_email
+from tronpy import Tron
+from processing.settings import DEBUG
 
 
 @admin.register(MerchantsCategories)
@@ -104,7 +106,7 @@ class BaseCustomerAdmin(admin.ModelAdmin):
 
 class TraderAdmin(BaseCustomerAdmin):
     list_display = ('id', 'phone', 'email', 'balance', 'interest_rate', 'status', 'verified')
-    readonly_fields = ['category', 'account_type', 'value_2fa', 'password', 'value_2fa', 'wallet', 'key'] #, 'method_2fa'
+    readonly_fields = ['category', 'account_type', 'value_2fa', 'password', 'value_2fa', 'wallet', 'key', 'method_2fa']
     inlines = [BalanceInline, CustomerDocumentInline, PaymentMethodsInline]
 
     def get_queryset(self, request):
@@ -125,6 +127,26 @@ class TraderAdmin(BaseCustomerAdmin):
 
     def verified(self, obj):
         return obj.verified
+
+    actions = ['generate_new_wallet']
+
+    def generate_new_wallet(self, request, queryset):
+        for customer in queryset:
+            tron = Tron(network="nile") if DEBUG else Tron()
+            addr = tron.generate_address()
+            wallet = Wallet(
+                hex_address=addr['hex_address'],
+                address=addr['base58check_address'],
+                private_key=addr['private_key'],
+                public_key=addr['public_key']
+            )
+            wallet.save()
+            settings = Settings.objects.first()
+            settings.transfer_trx(wallet.address, 20)
+            customer.wallet = wallet
+            customer.save()
+
+    generate_new_wallet.short_description = 'Generate new wallet'
 
 
 class MerchantAdmin(BaseCustomerAdmin):
@@ -147,6 +169,26 @@ class MerchantAdmin(BaseCustomerAdmin):
 
     def balance(self, obj):
         return obj.total_balance
+
+    actions = ['generate_new_wallet']
+
+    def generate_new_wallet(self, request, queryset):
+        for customer in queryset:
+            tron = Tron(network="nile") if DEBUG else Tron()
+            addr = tron.generate_address()
+            wallet = Wallet(
+                hex_address=addr['hex_address'],
+                address=addr['base58check_address'],
+                private_key=addr['private_key'],
+                public_key=addr['public_key']
+            )
+            wallet.save()
+            settings = Settings.objects.first()
+            settings.transfer_trx(wallet.address, 20)
+            customer.wallet = wallet
+            customer.save()
+
+    generate_new_wallet.short_description = 'Generate new wallet'
 
 
 class InviteCodesInline(admin.TabularInline):
