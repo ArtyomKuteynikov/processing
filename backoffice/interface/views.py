@@ -48,7 +48,7 @@ def unfreeze_money(order):
     else:
         balance = Balance.objects.filter(balance_link=order.output_link, account=order.sender).first()
     denomination = order.output_link.currency.denomination
-    transactions = Transaction.objects.filter(other_id_1=order.id).all()
+    transactions = Transaction.objects.filter(other_id_1=order.id, status=2).all()
     for transaction in transactions:
         balance.frozen = round(balance.frozen - transaction.amount, 2)
         balance.save()
@@ -1086,6 +1086,8 @@ def order_incorrect(request, order_id):
 def order_cancel(request, order_id):
     order = Order.objects.get(uuid=order_id)
     if not order:
+        return JsonResponse({'status': -1})
+    if order.status != 1:
         return JsonResponse({'status': -1})
     order.status = 7
     order.save()
