@@ -268,7 +268,7 @@ def reset3(request):
 Если вы не сбрасывали пароль, рекомендуем немедленно связаться с службой поддержки {"support@processing.com"}., используя зарегистрированный адрес электронной почты
 '''
             send_email(email, 'Уведомление об изменении пароля', msg_body)
-            cache.set(f'restriction:{email}', 1, timeout=86400)
+            cache.set(f'restriction:{email}', 1, timeout=Settings.objects.first().withdrawal_block * 3600)
             return redirect(reverse('login'))
         form.add_error(None, "Пароли не совпадают")
     else:
@@ -278,13 +278,14 @@ def reset3(request):
 
 def login_view(request):
     form = LoginForm()
+    MAX_RETRIES = Settings.objects.first().max_registration_tries
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
             email = form.data['email']
             retries = cache.get(f"retries:login:{email}") if cache.get(f"retries:login:{email}") else 0
-            if retries >= 3:
-                form.add_error(None, "Вы ввели неверный пароль 3 раза, попробуйте заново через 10 минут")
+            if retries >= MAX_RETRIES:
+                form.add_error(None, f"Вы ввели неверный пароль {MAX_RETRIES} раза, попробуйте заново через 10 минут")
                 return render(request, 'auth/login.html', {'form': form})
             password = form.data['password']
             print(request.META['REMOTE_ADDR'])
@@ -302,7 +303,6 @@ def login_view(request):
             if pwd_context.verify(password, user.password):
                 ip_address = request.META['REMOTE_ADDR']
                 user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-                print(user_agent)
                 if not Logs.objects.filter(customer=user.customer, user_agent=user_agent, ip=ip_address):
                     text = f'''Уважаемый клиент!
 В ваш аккаунт был выполнен вход с подозрительного устройства {user_agent} с IP-адреса {ip_address}. Если вы не инициировали это действие, рекомендуем немедленно изменить пароль. В противном случае проигнорируйте это письмо.
@@ -323,9 +323,9 @@ def login_view(request):
                     login(request, Customer.objects.get(id=user.id))
                     return HttpResponseRedirect(reverse('index'))
             cache.set(f"retries:login:{email}", retries + 1, timeout=600)
-            if retries >= 2:
-                text = '''Уважаемый клиент!
-                Мы обнаружили что вы ввели неверный пароль 3 раза подряд. Вы сможете повторить вход через 10 минут. Если вы забыли пароль - восстаносите его по этой ссылке ....
+            if retries >= MAX_RETRIES - 1:
+                text = f'''Уважаемый клиент!
+                Мы обнаружили что вы ввели неверный пароль {MAX_RETRIES} раза подряд. Вы сможете повторить вход через 10 минут. Если вы забыли пароль - восстаносите его по этой ссылке ....
                 Если это были не вы - незамедлительно свяжитесь в техподдержкой!'''
                 send_email(email, 'Блокировка на 10 минут', text)
                 form.add_error(None, "Неверный логин или пароль, попробуйте заново через 10 минут")
@@ -357,6 +357,7 @@ def login_2fa(request):
     key = request.GET.get('session', None)
     email = cache.get(f"otp:{key}")
     customer = Customer.objects.filter(email=email).first()
+    MAX_RETRIES = Settings.objects.first().max_registration_tries
     if not customer:
         return redirect('login')
     if customer.method_2fa != 0 and not customer.value_2fa:
@@ -368,17 +369,17 @@ def login_2fa(request):
             code = form.data['code']
             totp = pyotp.TOTP(customer.value_2fa)
             retries = cache.get(f"retries:otp:{email}") if cache.get(f"retries:otp:{email}") else 0
-            if retries >= 3:
-                form.add_error(None, "Вы ввели неверный код 3 раза, попробуйте заново через 60 минут")
+            if retries >= MAX_RETRIES:
+                form.add_error(None, f"Вы ввели неверный код {MAX_RETRIES} раза, попробуйте заново через 60 минут")
                 return render(request, 'auth/login.html', {'form': form})
             if totp.verify(code):
                 login(request, Customer.objects.get(id=customer.id))
                 return HttpResponseRedirect(reverse('index'))
             cache.set(f"retries:otp:{email}", retries + 1, timeout=600)
-            if retries >= 2:
+            if retries >= MAX_RETRIES - 1:
                 form.add_error(None, "Неверный код, попробуйте заново через 60 минут")
                 return render(request, 'auth/login.html', {'form': form})
-            form.add_error(None, "Неверный логин или пароль. Попробуйте еще раз или восстановите пароль")
+            form.add_error(None, "Неверный код, попробуйте заново через 60 минут")
     return render(request, 'auth/2fa.html', {'form': form, "session": key})
 
 
@@ -731,8 +732,9 @@ def order_start(request, order_id):
         if order.side == 'IN':
             service_commission = Settings.objects.first().commission_in
             balance = Balance.objects.filter(account=order.trader, balance_link=order.output_link).first()
-            balance.amount = balance.amount - round(order.output_amount * (1 - (trader_commission + service_commission) / 100)) + round(order.output_amount * service_commission / 100)
-            balance.frozen = balance.frozen + round(order.output_amount * (1 - (trader_commission + service_commission) / 100)) + round(order.output_amount * service_commission / 100)
+            freeze = round(order.output_amount * (1 - (trader_commission + service_commission) / 100)) + round(order.output_amount * service_commission / 100)
+            balance.amount = balance.amount - freeze
+            balance.frozen = balance.frozen + freeze
             balance.save()
             transaction = Transaction(
                 sender_id=order.trader_id,
@@ -1449,7 +1451,7 @@ def settings(request):
             customer.phone = form.data['phone']
             # customer.telegram_id = form.data['telegram_id']
             customer.save()
-        cache.set(f'restriction:{request.user.email}', 1, timeout=86400)
+        cache.set(f'restriction:{request.user.email}', 1, timeout=Settings.objects.first().withdrawal_block * 3600)
     return render(request, 'accounts/settings.html')
 
 
