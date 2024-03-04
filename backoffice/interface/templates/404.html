@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    {% load i18n %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Time4Pay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css"/>
+
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    {% load static %}
+    <link rel="icon" href="{% static 'favicon.png' %}">
+    <!-- Google Fonts -->
+    <link href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
+          rel="stylesheet">
+    <!-- Vendor CSS Files -->
+    <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/boxicons/css/boxicons.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/quill/quill.snow.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/quill/quill.bubble.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/remixicon/remixicon.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/simple-datatables/style.css' %}" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js">
+    </script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js">
+    </script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css">
+    <link href="https://cdn.jsdelivr.net/npm/suggestions-jquery@21.12.0/dist/css/suggestions.min.css" rel="stylesheet"/>
+    <!-- Подключение стилей Select2 -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css"/>
+
+    <!-- Template Main CSS File -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    {% block head %}
+    <style>
+        .navbar {
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+    </style>
+    {% endblock %}
+    <style>
+        .btn{
+        opacity: 70%;
+        }
+        .profile-picture {
+            position: relative;
+        }
+
+        .profile-delete {
+            position: absolute;
+            bottom: 0;
+        }
+
+
+
+        form.row {
+            max-width: fit-content;
+        }
+
+        .mysidebar {
+            min-width: fit-content;
+            position: absolute;
+            min-height: calc(100vh - 52px);
+            background-color: #42506B;
+        }
+
+        body {
+            font-size: 12px !important;
+            background-color: #fff;
+        }
+
+        a {
+            color: #ffffff
+        }
+
+        .btn {
+            color: #000 !important;
+        }
+
+        a {
+            color: #4154f1 !important;
+            text-decoration: none;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: #012970 !important;
+            font-family: "Nunito", sans-serif;
+        }
+
+        .row {
+            text-align: center !important;
+        }
+
+        .notifications {
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .header {
+            transition: all 0.5s;
+            z-index: 997;
+            height: 60px;
+            box-shadow: 0px 2px 20px transparent !important;
+            /*background-color: transparent !important;*/
+            padding-left: 20px;
+        }
+
+        .sidebar {
+            top: 0 !important;
+            padding: 60px 20px !important;
+        }
+
+        table {
+            margin-top: 0 !important;
+            font-size: 12px;
+        }
+
+        .hidden_row {
+            display: none;
+        }
+
+        .right {
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .left {
+            margin-left: 0;
+            margin-right: auto;
+        }
+	.suggestions-wrapper {
+ 	    position: absolute;
+            margin: 33px 0 0 0;
+    	    margin-left: 0px;
+	    width: 100%;
+	}
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+      <section class="section error-404 min-vh-100 d-flex flex-column align-items-center justify-content-center">
+        <h1>404</h1>
+        <h2>Страница не найдена</h2>
+        <a class="btn btn-light" href="/">Главная</a>
+      </section>
+
+    </div>
+
+</body>

@@ -24,8 +24,12 @@ class WalletAdmin(admin.ModelAdmin):
 
 
 class WithdrawalAdmin(admin.ModelAdmin):
-    list_display = ['id', 'customer', 'amount', 'currency', 'status', 'created', 'updated']
-    readonly_fields = ['created', 'updated']
+    list_display = ['id', 'customer', 'amount_counted', 'currency', 'status', 'created', 'updated']
+    readonly_fields = ['created', 'updated', 'amount_counted']
+
+    def amount_counted(self, obj):
+        return round(obj.amount / obj.currency.currency.denomination, 2)
+    exclude = ['amount']
 
     def save_model(self, request, obj, form, change):
         if obj.status in ['APPROVED', 'REFUSED'] and not request.user.has_perm('can_change_approved_status'):

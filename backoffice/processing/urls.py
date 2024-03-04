@@ -19,6 +19,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 
+handler404 = 'interface.views.handler404'
+# handler500 = 'interface.views.handler404'
+# handler403 = 'interface.views.handler404'
+# handler400 = 'interface.views.handler404'
+
 urlpatterns = [
     path('baton/', include('baton.urls')),
     path('', include('interface.urls')),

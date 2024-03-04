@@ -181,7 +181,7 @@ def step4(request):
     key = pyotp.random_base32()
     uri = pyotp.totp.TOTP(key).provisioning_uri(
         name=customer.email,
-        issuer_name='Processing')
+        issuer_name='Time4Pay')
     qr_image_pil = qrcode.make(uri).get_image()
     stream = BytesIO()
     qr_image_pil.save(stream, format='PNG')
@@ -288,7 +288,6 @@ def login_view(request):
                 form.add_error(None, f"Вы ввели неверный пароль {MAX_RETRIES} раза, попробуйте заново через 10 минут")
                 return render(request, 'auth/login.html', {'form': form})
             password = form.data['password']
-            print(request.META['REMOTE_ADDR'])
             user = Customer.objects.filter(email=email).first()
             if not user:
                 form.add_error(None, "Такого пользователя не существует")
@@ -492,11 +491,13 @@ def kyc(request):
             form = KYCForm(request.POST, request.FILES, instance=verification)
         else:
             form = KYCForm(request.POST, request.FILES)
-        verification = form.save(commit=False)
-        verification.customer = request.user.customer
-        verification.status = 'request'
-        verification.save()
-        return redirect('index')
+        if form.is_valid():
+            verification = form.save(commit=False)
+            verification.customer = request.user.customer
+            verification.status = 'request'
+            verification.save()
+            return redirect('index')
+        form.add_error(None, 'Неверные данные')
     return render(request, 'auth/trader/kyc.html', {'form': form, 'kyc': True})
 
 
@@ -551,10 +552,12 @@ def transactions_view(request):
                                       balance_link=link).first() else 0) / link.currency.denomination)
     except:
         form = WithdrawalForm()
+    min_data = request.user.customer.created.strftime('%Y-%m-%d')
+    max_data = datetime.datetime.now().strftime('%Y-%m-%d')
     return render(request, 'accounts/transactions.html',
                   {'transactions': transactions, 'balances': balances, 'address': address, 'max_amount': max_amount,
                    'form': form, 'sites': sites, 'links': links, 'types': types, 'statuses': statuses, 'start': start,
-                   'finish': end})
+                   'finish': end, 'min_data': min_data, 'max_data': max_data})
 
 
 @login_required
@@ -629,10 +632,13 @@ def orders_view(request):
                                       balance_link=link).first() else 0) / link.currency.denomination)
     except:
         form = WithdrawalForm()
+    min_data = request.user.customer.created.strftime('%Y-%m-%d')
+    max_data = datetime.datetime.now().strftime('%Y-%m-%d')
     return render(request, 'accounts/orders.html',
                   {'orders': orders, 'start': start, 'finish': end, 'balances': balances, 'address': address,
                    'max_amount': max_amount, 'form': form, 'banks': banks, 'cards': cards, 'sites': sites,
-                   'output_links': output_links, 'statuses': statuses, 'time_limit': Settings.objects.first().order_life * 60})
+                   'output_links': output_links, 'statuses': statuses, 'time_limit': Settings.objects.first().order_life * 60,
+                   'min_data': min_data, 'max_data': max_data})
 
 
 @login_required
@@ -1191,9 +1197,11 @@ def withdrawals_view(request):
                                       balance_link=link).first() else 0) / link.currency.denomination)
     except:
         form = WithdrawalForm()
+    min_data = request.user.customer.created.strftime('%Y-%m-%d')
+    max_data = datetime.datetime.now().strftime('%Y-%m-%d')
     return render(request, 'accounts/withdrawals.html',
                   {'withdrawals': withdrawals[::-1], 'balances': balances, 'address': address, 'max_amount': max_amount,
-                   'form': form, 'start': start, 'finish': end})
+                   'form': form, 'start': start, 'finish': end, 'min_data': min_data, 'max_data': max_data})
 
 
 @login_required
@@ -1231,8 +1239,8 @@ def statistics(request):
     if aggregation_param == 'days':
         transactions_aggregated = transactions.extra({'day': 'date(created)'}).values('day').annotate(
             total_transactions=Count('id'),
-            successful_transactions=Count('id', filter=Q(status=2)),
-            unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
+            successful_transactions=Count('id', filter=Q(status=1)),
+            unsuccessful_transactions=Count('id', filter=Q(status=1, _negated=True)),
         )
         orders_aggregated = orders.extra({'day': 'date(created)'}).values('day').annotate(
             total_orders=Count('id'),
@@ -1267,8 +1275,8 @@ def statistics(request):
     elif aggregation_param == 'sites':
         transactions_aggregated = transactions.extra({'site': 'site_id'}).values('site').annotate(
             total_transactions=Count('id'),
-            successful_transactions=Count('id', filter=Q(status=2)),
-            unsuccessful_transactions=Count('id', filter=Q(status=2, _negated=True)),
+            successful_transactions=Count('id', filter=Q(status=1)),
+            unsuccessful_transactions=Count('id', filter=Q(status=1, _negated=True)),
         )
         orders_aggregated = orders.extra({'site': 'order_site_id'}).values('site').annotate(
             total_orders=Count('id'),
@@ -1288,8 +1296,11 @@ def statistics(request):
                     merged_data.append(combined_dict)
     else:
         merged_data = 0
+    min_data = request.user.customer.created.strftime('%Y-%m-%d')
+    max_data = datetime.datetime.now().strftime('%Y-%m-%d')
     return render(request, 'accounts/statistics.html',
-                  {'groupby': aggregation_param, 'start': start, 'finish': end, 'data': merged_data})
+                  {'groupby': aggregation_param, 'start': start, 'finish': end, 'data': merged_data,
+                   'min_data': min_data, 'max_data': max_data})
 
 
 @login_required
@@ -1507,15 +1518,26 @@ def withdrawals(request):
     if request.method == 'POST':
         form = WithdrawalForm(request.POST)
         if not Withdrawal.objects.filter(customer=request.user.customer, created__range=[datetime.datetime.now() - datetime.timedelta(seconds=3), datetime.datetime.now() + datetime.timedelta(seconds=3)]):
-            withdrawal = Withdrawal(
-                customer=request.user.customer,
-                amount=float(form.data['amount']) * Links.objects.filter(
-                    id=form.data['link']).first().currency.denomination,
-                currency_id=form.data['link'],
-                address=form.data['address'],
-                comment=form.data['comment'],
-                status='NEW'
-            )
+            if Wallet.objects.filter(address=form.data['address'].replace(' ', '')).first():
+                withdrawal = Withdrawal(
+                    customer=request.user.customer,
+                    amount=float(form.data['amount']) * Links.objects.filter(
+                        id=form.data['link']).first().currency.denomination,
+                    currency_id=form.data['link'],
+                    address=form.data['address'],
+                    comment=form.data['comment'],
+                    status='APPROVED'
+                )
+            else:
+                withdrawal = Withdrawal(
+                    customer=request.user.customer,
+                    amount=float(form.data['amount']) * Links.objects.filter(
+                        id=form.data['link']).first().currency.denomination,
+                    currency_id=form.data['link'],
+                    address=form.data['address'],
+                    comment=form.data['comment'],
+                    status='NEW'
+                )
             withdrawal.save()
             balance = Balance.objects.filter(account=withdrawal.customer, balance_link=withdrawal.currency).first()
             balance.frozen = balance.frozen + withdrawal.amount
@@ -1569,8 +1591,11 @@ def website(request, website_id):
         form = WebsitesForm(request.POST, instance=website)
         website = form.save()
         website.save()
+    manager_name = Settings.objects.first().website_manager_name
+    manager_contact = Settings.objects.first().website_manager_contact
     return render(request, 'accounts/platform.html', {'website': website, 'categories': categories,
-                                                      'currencies': currencies, 'website_id': website_id})
+                                                      'currencies': currencies, 'website_id': website_id,
+                                                      'manager_name': manager_name, 'manager_contact': manager_contact})
 
 
 @login_required
@@ -1749,7 +1774,7 @@ def ticket(request, ticket_id):
 
 
 @login_required
-def read_all(request, note_id):
+def read_all(request):
     notifications = Notifications.objects.filter(customer=request.user.customer).all()
     for notification in notifications:
         notification.read = True
@@ -1763,6 +1788,10 @@ def read(request, note_id):
     notification.read = True
     notification.save()
     return JsonResponse({'status': True})
+
+
+def handler404(request, exception):
+    return render(request, '404.html', status=404)
 
 
 @login_required
@@ -1822,3 +1851,7 @@ def send_otp_telegram(request):
 
 def test(request):
     return render(request, 'test.html')
+
+
+def docs(request):
+    return render(request, 'docs.html')

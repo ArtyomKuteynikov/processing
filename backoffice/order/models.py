@@ -89,6 +89,13 @@ class Statistics(Transaction):
         verbose_name_plural = "Statistics"
 
 
+class Results(Transaction):
+    class Meta:
+        proxy = True
+        verbose_name = "Financial results"
+        verbose_name_plural = "Financial results"
+
+
 class Order(models.Model):
     sender = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='order_sender')
     trader = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='trader', null=True)

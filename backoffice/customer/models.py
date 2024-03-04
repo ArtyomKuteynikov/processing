@@ -97,7 +97,7 @@ class Settings(models.Model):
 
     merchant_deposit = models.IntegerField(verbose_name="Депозит мерчант (лимит)")
     commission_in = models.IntegerField(verbose_name="Комиссия системы инвойс клиентам")
-    commission_out = models.IntegerField(verbose_name="Комиссия системы выводzobv средства клиентам")
+    commission_out = models.IntegerField(verbose_name="Комиссия системы вывод средства клиентам")
     withdrawals_limit = models.IntegerField(verbose_name="Кол-во заявок мерчанта на вывод в сутки")
     withdrawal_min = models.IntegerField(verbose_name="Лимит мерчанта на минимальную сумму вывода")
     new_merchants_limit = models.IntegerField(verbose_name="Лимиты для новых мерчантов")
@@ -122,6 +122,9 @@ class Settings(models.Model):
 
     trader_inactive_push = models.IntegerField(verbose_name="Пуш уведомление о “засыпании” трейдера")
     inactive_email = models.IntegerField(verbose_name="Email уведомление о неактивности")
+
+    website_manager_name = models.CharField(max_length=40, verbose_name="Имя личного менеджера для отображения на странице площадки")
+    website_manager_contact = models.CharField(max_length=40, verbose_name="Контакт личного менеджера для отображения на странице площадки")
 
     system_wallet_address = models.CharField(max_length=40, verbose_name="Адрес системного кошелька")
     system_wallet_private_key = models.CharField(max_length=1024, verbose_name="Приватный ключ чистемного кошелька")
@@ -252,7 +255,7 @@ class Customer(User):
     status = models.CharField(max_length=256, choices=CUSTOMER_STATUSES)
     category = models.ForeignKey(MerchantsCategories, on_delete=models.CASCADE, blank=True, null=True)
     # email = models.EmailField(blank=False, unique=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='Telegram')
     telegram_id = models.CharField(max_length=128, blank=True, null=True)
     email_is_verified = models.BooleanField(default=False)
     phone_is_verified = models.BooleanField(default=False)

@@ -56,7 +56,7 @@ class BalanceInline(admin.TabularInline):
 
 
 class PaymentMethodsInline(admin.TabularInline):
-    model = TraderPaymentMethod
+    model = Cards
     extra = 0
 
 
@@ -82,6 +82,10 @@ class StaffAdmin(UserAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).filter(is_staff=True)
 
+    def save_model(self, request, obj, form, change):
+        obj.is_staff = True
+        super().save_model(request, obj, form, change)
+
 
 class InviteCodesAdmin(admin.ModelAdmin):
     list_display = ['email', 'code', 'status', 'account']
@@ -105,7 +109,7 @@ class BaseCustomerAdmin(admin.ModelAdmin):
 
 
 class TraderAdmin(BaseCustomerAdmin):
-    list_display = ('id', 'phone', 'email', 'balance', 'interest_rate', 'status', 'verified')
+    list_display = ('id', 'phone', 'email', 'interest_rate', 'status', 'verified')
     readonly_fields = ['category', 'account_type', 'value_2fa', 'password', 'value_2fa', 'wallet', 'key', 'method_2fa']
     inlines = [BalanceInline, CustomerDocumentInline, PaymentMethodsInline]
 
@@ -150,7 +154,7 @@ class TraderAdmin(BaseCustomerAdmin):
 
 
 class MerchantAdmin(BaseCustomerAdmin):
-    list_display = ('id', 'created', 'site', 'phone', 'email', 'balance', 'status')
+    list_display = ('id', 'created', 'site', 'phone', 'email', 'status')
     inlines = [WebsitesInline, BalanceInline, TransactionsInline]
 
     def get_queryset(self, request):
@@ -266,6 +270,9 @@ class SettingsAdmin(admin.ModelAdmin):
         }),
         ('Notifications', {
             'fields': ('trader_inactive_push', 'inactive_email'),
+        }),
+        ('Personal manager', {
+            'fields': ('website_manager_name', 'website_manager_contact'),
         }),
         ('System wallet', {
             'fields': ('system_wallet_address', 'system_wallet_private_key', 'trx_balance', 'usdt_balance'),

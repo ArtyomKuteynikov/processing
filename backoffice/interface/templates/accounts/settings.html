@@ -122,8 +122,8 @@
             <div class="modal-body">
                 <form method="post" id="settingsForm" action="{% url 'settings' %}">
                     {% csrf_token %}
-                    <label for="phone">Телефон</label>
-                    <input name="phone" id="phone" class="form-control" placeholder="Введите номер телефона"
+                    <label for="phone">Telegram</label>
+                    <input name="phone" id="phone" class="form-control" placeholder="Введите ник телеграм"
                            value="{{ user.customer.phone }}">
                     <label for="email">Email</label>
                     <input name="email" id="email" class="form-control" placeholder="Введите email"

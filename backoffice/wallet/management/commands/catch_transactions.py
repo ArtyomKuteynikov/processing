@@ -110,7 +110,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         while True:
             try:
-                for customer in Customer.objects.filter(account_type="TRADER").all():
+                for customer in Customer.objects.filter().all():
                     if customer.wallet:
                         get_transactions(customer.wallet.address, customer)
                 time.sleep(180)

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Time4Pay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css"/>
+
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    {% load static %}
+    <link rel="icon" href="{% static "favicon.png" %}">
+    <!-- Google Fonts -->
+    <link href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
+          rel="stylesheet">
+    <!-- Vendor CSS Files -->
+    <link href="{% static "vendor/bootstrap/css/bootstrap.min.css" %}" rel="stylesheet">
+    <link href="{% static "vendor/bootstrap-icons/bootstrap-icons.css" %}" rel="stylesheet">
+    <link href="{% static "vendor/boxicons/css/boxicons.min.css" %}" rel="stylesheet">
+    <link href="{% static "vendor/quill/quill.snow.css" %}" rel="stylesheet">
+    <link href="{% static "vendor/quill/quill.bubble.css" %}" rel="stylesheet">
+    <link href="{% static "vendor/remixicon/remixicon.css" %}" rel="stylesheet">
+    <link href="{% static "vendor/simple-datatables/style.css" %}" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js">
+    </script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js">
+    </script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css">
+    <link href="https://cdn.jsdelivr.net/npm/suggestions-jquery@21.12.0/dist/css/suggestions.min.css" rel="stylesheet"/>
+    <!-- Подключение стилей Select2 -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css"/>
+
+    <!-- Template Main CSS File -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        form {
+            min-width: fit-content;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        .g-recaptcha{
+           margin: 15px auto !important;
+           width: auto !important;
+           height: auto !important;
+           text-align: -webkit-center;
+           text-align: -moz-center;
+           text-align: -o-center;
+           text-align: -ms-center;
+        }
+        .errorlist
+        {
+            padding: 10px;
+            background: #ff555555;
+            border-radius: 10px;
+        }
+        .errorlist
+        {
+            padding: 10px;
+            background: #ff555555;
+            border-radius: 10px;
+        }
+        .error input, .error select {
+            border: 2px red solid;
+            }
+        .microlight {
+            border-radius: 10px;
+            text-align: left;
+            margin: 0 5% 2%;
+        }
+        .card {
+            border-radius: 10px;
+            text-align: justify;
+            padding: 10px;
+        }
+        hr {
+            border: solid 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+<div style="position: fixed; top: 10px; left: 10px;"><h5 style="color:#026AA2"><img style="height: 32px" src="{% static "logo.png" %}">Time4Pay</h5></div>
+<div class="column col-md-9" style="margin-top: 42px;">
+
+    <div style="text-align: center;z-index: 1">
+        <div class="card">
+            <h2 class="h2 fw-semibold black mb-3-5">Руководство по работе с API</h2>
+            <hr>
+            <h4><b>1. Начало работы</b></h4>
+            <hr>
+            <p>Для начала работы необходимо получить токен. Для этого нужно отправить в
+                эндпоинт <a href="https://api.time4pay.io/docs#/Account/get_authtoken_v1_authtoken_get">/v1/authtoken</a>
+                логин и пароль от личного кабинета мерчанта.</p>
+            <pre class="curl microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-bash" style="white-space: pre;"><span>curl -X </span><span style="color: rgb(162, 252, 162);">'GET'</span><span> \
+</span><span>  </span><span style="color: rgb(162, 252, 162);">'https://api.time4pay.io/v1/authtoken?username=kuteynikov.artyom%40gmail.com&amp;password=Qwerty1234'</span><span> \
+</span><span>  -H </span><span style="color: rgb(162, 252, 162);">'accept: application/json'</span></code></pre>
+            <p> Если они указаны верно - система выдаст следующий результат:</p>
+            <pre class="microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"access_token"</span><span>: </span><span style="color: rgb(162, 252, 162);">"4e40f65c-0b39-43a9-98d9-e0cdb679e6f8"</span><span>, // токен, необходимый для работы с API
+</span><span>  </span><span class="hljs-attr">"customer_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">3</span><span>, // ID мерчанта в системе
+</span><span>  </span><span class="hljs-attr">"account_type"</span><span>: </span><span style="color: rgb(162, 252, 162);">"MERCHANT"</span><span>, // Тип аккаунта
+</span><span>  </span><span class="hljs-attr">"status"</span><span>: </span><span style="color: rgb(162, 252, 162);">"NEW"</span><span> // Статус аккаунта
+</span>}</code></pre>
+            <p class="errorlist">Проверьте тип и статус аккаунта - если тип аккаунта не <i>MERCHANT</i> или статус <i>BLOCKED</i> создание ордеров будет недоступно!</p>
+            <hr>
+            <p>В случае возникновения возможности того что токен рассекречен третьими лицами - его необходимо удалить, это
+            действие приведет к автоматическому анулированию старого токена и созданию нового,
+                который вы сможете получить вызвав предидущий эндпоинт. Для удаления необходимо вызвать
+                <a href="https://api.time4pay.io/docs#/Account/delete_authtoken_v1_authtoken_delete">/v1/authtoken</a>
+            , передав старый токен.</p>
+            <pre class="curl microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-bash" style="white-space: pre;"><span>curl -X </span><span style="color: rgb(162, 252, 162);">'DELETE'</span><span> \
+</span><span>  </span><span style="color: rgb(162, 252, 162);">'https://api.time4pay.io/v1/authtoken?key=4e40f65c-0b39-43a9-98d9-e0cdb679e6f8'</span><span> \
+</span><span>  -H </span><span style="color: rgb(162, 252, 162);">'accept: application/json'</span></code></pre>
+            <p>Если токен верный - система выдаст следующий результат:</p>
+            <pre class="microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"status"</span><span>: </span><span style="color: rgb(162, 252, 162);">"TOKEN_DELETED"</span><span>
+</span>}</code></pre>
+            <hr>
+            <p>Также, для того чтобы создавать ордеры на площадках вам понадобится ключ площадки, который мы можете получить в личном кабинете: Площадки > Нужная вам площадка:</p>
+            <img src="{% static 'step1.png' %}">
+            <hr>
+            <h4><b>2. Проверка баланса</b></h4>
+            <hr>
+            <p>Для получения баланса аккаунта необходимо вызвать эндпоинт <a href="https://api.time4pay.io/docs#/Account/balance_v1_balance_get">/v1/balance</a>, передав старый токен.</p>
+            <pre class="curl microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-bash" style="white-space: pre;"><span>curl -X </span><span style="color: rgb(162, 252, 162);">'GET'</span><span> \
+</span><span>  </span><span style="color: rgb(162, 252, 162);">'https://api.time4pay.io/v1/balance?key=4e40f65c-0b39-43a9-98d9-e0cdb679e6f8'</span><span> \
+</span><span>  -H </span><span style="color: rgb(162, 252, 162);">'accept: application/json'</span></code></pre>
+            <p>Если токен верный - система выдаст следующий результат:</p>
+            <pre class="microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"balance"</span><span>: [
+</span>    {
+<span>      </span><span class="hljs-attr">"currency"</span><span>: </span><span style="color: rgb(162, 252, 162);">"USDT"</span><span>,
+</span><span>      </span><span class="hljs-attr">"amount"</span><span>: </span><span style="color: rgb(211, 99, 99);">1000.46</span><span>
+</span>    }
+  ]
+}</code></pre>
+            <p class="errorlist">Регулярно проверяйте баланс, чтобы у ваших клиентов не возникало проблем с созданием ордеров!</p>
+            <hr>
+            <h4><b>3. Создание ордера</b></h4>
+            <hr>
+            <p>Для создания ордера клиента необходимо передать в эндпоинт <a href="https://api.time4pay.io/docs#/Order/create_order_v1_order_post">/v1/order</a> данные в следующем виде:</p>
+            <pre class="body-param__example microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"key"</span><span>: </span><span style="color: rgb(162, 252, 162);">"string"</span><span>, // API ключ
+</span><span>  </span><span class="hljs-attr">"website_key"</span><span>: </span><span style="color: rgb(162, 252, 162);">"string"</span><span>, // ключ площадки
+</span><span>  </span><span class="hljs-attr">"output_link"</span><span>: </span><span style="color: rgb(162, 252, 162);">"USDT_TRC20"</span><span>, // криптовалюту, в которой вы получите средства
+</span><span>  </span><span class="hljs-attr">"amount"</span><span>: </span><span style="color: rgb(211, 99, 99);">0</span><span>, // исходящую сумму(криптовалюта)
+</span><span>  </span><span class="hljs-attr">"quantity"</span><span>: </span><span style="color: rgb(211, 99, 99);">0</span><span>, // входящую сумму(фиатная валюта)
+</span><span>  </span><span class="hljs-attr">"comment"</span><span>: </span><span style="color: rgb(162, 252, 162);">"string"</span><span>, // комментарий
+</span><span>  </span><span class="hljs-attr">"side"</span><span>: </span><span style="color: rgb(162, 252, 162);">"IN"</span><span>, // Прием денег(IN) или выплата(OUT)
+</span><span>  </span><span class="hljs-attr">"client"</span><span>: </span><span style="color: rgb(211, 99, 99);">0</span><span>, // ID клиента в системе мерчанта
+</span><span>  </span><span class="hljs-attr">"external"</span><span>: </span><span style="color: rgb(211, 99, 99);">0</span><span>, // Доп. ID клиента в системе мерчанта
+</span><span>  </span><span class="hljs-attr">"client_contact"</span><span>: </span><span style="color: rgb(162, 252, 162);">"string"</span><span> // Контакт клиента
+</span>}</code></pre>
+            <p class="errorlist">Необходимо передать только один агрумент - входящая или исходящая сумма, второй оставить 0</p>
+            <p>Если площадка активна, на балансе достаточно средств(при выплате), ключи верные - создастся ордер клиента и система вернет следующий ответ:</p>
+            <pre class="microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"link"</span><span>: </span><span style="color: rgb(162, 252, 162);">"https://processing.time4pay.io/order/start/f379b658-7c56-4e5d-b779-13e318cba663"</span><span>, // ссылка на страницу оплаты
+</span><span>  </span><span class="hljs-attr">"order_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">57</span><span>, // ID ордера
+</span><span>  </span><span class="hljs-attr">"output_link_id"</span><span>: </span><span style="color: rgb(162, 252, 162);">"USDT"</span><span>, // Исходящая валюта
+</span><span>  </span><span class="hljs-attr">"order_site_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">1</span><span>, // IВ площадки
+</span><span>  </span><span class="hljs-attr">"input_amount"</span><span>: </span><span style="color: rgb(211, 99, 99);">100</span><span>, // Входящая сумма
+</span><span>  </span><span class="hljs-attr">"output_amount"</span><span>: </span><span style="color: rgb(211, 99, 99);">1.06</span><span>, // Исходящая сумма
+</span><span>  </span><span class="hljs-attr">"status"</span><span>: </span><span style="color: rgb(162, 252, 162);">"New"</span><span>, // Статус
+</span><span>  </span><span class="hljs-attr">"uuid"</span><span>: </span><span style="color: rgb(162, 252, 162);">"f379b658-7c56-4e5d-b779-13e318cba663"</span><span> // Уникальный идентификатор ордера
+</span>}</code></pre>
+            <hr>
+            <b>Ошибки:</b>
+            <ul>
+                <li>Status code: 400 - Order amount less than minimum amount</li>
+                <li>Status code: 401 - Incorrect key or site_key</li>
+                <li>Status code: 402 - Inefficient balance</li>
+                <li>Status code: 403 - Site blocked</li>
+                <li>Status code: 406 - Incorrect input data</li>
+                <li>Status code: 422 - Incorrect schema</li>
+            </ul>
+            <hr>
+            <h4><b>4. Получение данных об ордере</b></h4>
+            <hr>
+            <p>Для получения данных об ордере, необходимо вызвать эндпоинт <a href="https://api.time4pay.io/docs#/Order/order_v1_order__order_id__get">/v1/order/{order_id}</a>,
+            order_id - это id ордера, который был присвоен ему при создании, также, в качестве аргумента необходимо передать ключ API</p>
+<pre class="curl microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-bash" style="white-space: pre;"><span>curl -X </span><span style="color: rgb(162, 252, 162);">'GET'</span><span> \
+</span><span>  </span><span style="color: rgb(162, 252, 162);">'https://api.time4pay.io/v1/order/3?key=4e40f65c-0b39-43a9-98d9-e0cdb679e6f8'</span><span> \
+</span><span>  -H </span><span style="color: rgb(162, 252, 162);">'accept: application/json'</span></code></pre>
+            <p>Если ID и ключ верные - система вернет следующий ответ:</p>
+<pre class="microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"order_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">3</span><span>, // ID ордера
+</span><span>  </span><span class="hljs-attr">"trader_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">2</span><span>, // ID трейдера
+</span><span>  </span><span class="hljs-attr">"input_link_id"</span><span>: </span><span style="color: rgb(162, 252, 162);">"RUB"</span><span>, // Входящая валюта
+</span><span>  </span><span class="hljs-attr">"output_link_id"</span><span>: </span><span style="color: rgb(162, 252, 162);">"USDT"</span><span>, // Исходящая валюта
+</span><span>  </span><span class="hljs-attr">"order_site_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">1</span><span>, // ID площадки
+</span><span>  </span><span class="hljs-attr">"input_amount"</span><span>: </span><span style="color: rgb(211, 99, 99);">100</span><span>, // Входящая сумма
+</span><span>  </span><span class="hljs-attr">"output_amount"</span><span>: </span><span style="color: rgb(211, 99, 99);">1.1</span><span>, // Исходящая сумма
+</span><span>  </span><span class="hljs-attr">"create_at"</span><span>: </span><span style="color: rgb(162, 252, 162);">"18.01.2024 11:16:42"</span><span>, // Время создания
+</span><span>  </span><span class="hljs-attr">"updated_at"</span><span>: </span><span style="color: rgb(162, 252, 162);">"18.01.2024 11:17:19"</span><span>, // Время последнего обновления
+</span><span>  </span><span class="hljs-attr">"status"</span><span>: </span><span style="color: rgb(162, 252, 162);">"Success"</span><span>, // Статус ордера
+</span><span>  </span><span class="hljs-attr">"side"</span><span>: </span><span style="color: rgb(162, 252, 162);">"IN"</span><span>, // Прием денег(IN) или выплата(OUT)
+</span><span>  </span><span class="hljs-attr">"uuid"</span><span>: </span><span style="color: rgb(162, 252, 162);">"ad85305e-b4b6-415f-972c-be9b5412d113"</span><span>, // Уникальный идентификатор ордера
+</span><span>  </span><span class="hljs-attr">"client_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">1</span><span>, // ID клиента в системе мерчанта
+</span><span>  </span><span class="hljs-attr">"external_id"</span><span>: </span><span style="color: rgb(211, 99, 99);">1</span><span>, // Доп. ID клиента в системе мерчанта
+</span><span>  </span><span class="hljs-attr">"client_contact"</span><span>: </span><span style="color: rgb(162, 252, 162);">"info@gmail.com"</span><span> // Контакт клиента
+</span>}</code></pre>
+             <p class="errorlist">Никому не сообщайте в открытом виде данные, получаемые из этого эндпоинта!</p>
+            <hr>
+            <h4><b>5. Курсы валют</b></h4>
+            <hr>
+            <p>Для получения актуальных курсов валют воспользуйтесь эндпоинтом <a href="https://api.time4pay.io/docs#/Market/course_v1_courses_get">/v1/courses</a>
+            Если необходимо получить курсы по определенной валюте - передайте ее аргументом в запросе.</p>
+            <pre class="curl microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-bash" style="white-space: pre;"><span>curl -X </span><span style="color: rgb(162, 252, 162);">'GET'</span><span> \
+</span><span>  </span><span style="color: rgb(162, 252, 162);">'https://api.time4pay.io/v1/courses?currency=RUB'</span><span> \
+</span><span>  -H </span><span style="color: rgb(162, 252, 162);">'accept: application/json'</span></code></pre>
+            <p> Вы получите такой результат:</p>
+<pre class="microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;"><code class="language-json" style="white-space: pre;"><span>{
+</span><span>  </span><span class="hljs-attr">"courses"</span><span>: [
+</span>    {
+<span>      </span><span class="hljs-attr">"currency_in"</span><span>: </span><span style="color: rgb(162, 252, 162);">"USDT"</span><span>,
+</span><span>      </span><span class="hljs-attr">"currency_out"</span><span>: </span><span style="color: rgb(162, 252, 162);">"RUB"</span><span>,
+</span><span>      </span><span class="hljs-attr">"price"</span><span>: </span><span style="color: rgb(162, 252, 162);">"94.5"</span><span>
+</span>    }
+  ]
+}</code></pre>
+            <p class="errorlist">Курсы обновляются каждые 10 секунд!</p>
+        </div>
+    </div>
+</div>
+<div style="position: fixed; bottom: 10px; left: 10px;"><p>©Time4Pay 2023</p></div>
+</body>
+
+</html>

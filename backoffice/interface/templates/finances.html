@@ -177,8 +177,9 @@
     }
 
 </style>
+{% if not orders %}
 <div class="row">
-    <div class="col-lg-4">
+    <div class="col-lg-6">
         <div class="card tab {% if transactions %} active {% endif %}"
              onclick="window.location.href='/transactions'; return false">
             <div class="">
@@ -186,16 +187,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <div class="card tab {% if orders %} active {% endif %}"
-             onclick="window.location.href='/orders'; return false">
-            <div class="">
-                <p class="mytabs">Ордеры</p>
-
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
+    <div class="col-lg-6">
         <div class="card tab {% if withdrawals %} active {% endif %}"
              onclick="window.location.href='/withdrawals'; return false">
             <div class="">
@@ -205,6 +197,12 @@
         </div>
     </div>
 </div>
+{% endif %}
+{% if user.customer.account_type == "TRADER" and user.customer.verification_status != 'Verified' %}
+<div class="modal-body" style="text-align: center;">
+    <div style="font-size: 16px;width: 100%;background-color: #fa5667;border-radius: 10px;">Для работы необходимо пройти<br><a href="/kyc">верификацию</a></div>
+</div>
+{% endif %}
 <div class="row">
 
     <div class="col-xl-12">
@@ -227,13 +225,11 @@
                     </div>
                     <div class="card col-xl-3"
                          style="align-content: center;display: flex;flex-wrap: wrap;flex-direction: row;justify-content: space-around;padding: 2%">
-                        {% if user.customer.account_type == "TRADER" %}
                         <button onclick="openDeposit()" class="btn btn-primary"
-                                style="color: #fff !important;max-height: 30px;" {% if user.customer.verification_status != 'Verified' %} disabled {% endif %}>Пополнить
+                                style="color: #fff !important;max-height: 30px;">Пополнить
                         </button>
-                        {% endif %}
                         <button onclick="openWithdrawal()" class="btn btn-primary"
-                                style="color: #fff !important;max-height: 30px;" {% if not user.customer.can_withdraw %} disabled {% endif %}>Вывести
+                                style="color: #fff !important;max-height: 30px;">Вывести
                         </button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -256,11 +252,16 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="text-align: center;">
+                {% if user.customer.account_type == "TRADER" and user.customer.verification_status != 'Verified' %}
+                <div style="font-size: 16px;width: 100%;background-color: #fa5667;border-radius: 10px;">Для пополнения
+                    баланса необходимо пройти<br><a href="/kyc">верификацию</a></div>
+                {% else %}
                 <p class="form-control" style="display: flex;justify-content: space-between;" id="card"><span
                         id="cardNumber">{{ address }}</span>
                     <button onclick="copyToClipboard('cardNumber')" class="btn btn-light">Copy</button>
                 </p>
                 <img src="https://api.qrserver.com/v1/create-qr-code/?data={{ address }};size=100x100"/>
+                {% endif %}
             </div>
 
             <div class="modal-footer">
@@ -278,6 +279,18 @@
                 <h5 class="modal-title">Вывод средств</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            {% if user.customer.account_type == "TRADER" and user.customer.verification_status != 'Verified' %}
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 16px;width: 100%;background-color: #fa5667;border-radius: 10px;">Для пополнения
+                    баланса необходимо пройти<br><a href="/kyc">верификацию</a></div>
+            </div>
+            {% elif not user.customer.can_withdraw %}
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 16px;width: 100%;background-color: #fa5667;border-radius: 10px;">Выводы
+                    приостановлены на 48 часов
+                </div>
+            </div>
+            {% else %}
             <form method="post" action="{% url 'withdrawal' %}">
                 {% csrf_token %}
                 <div class="modal-body" style="text-align: center;">
@@ -291,6 +304,7 @@
 
                 </div>
             </form>
+            {% endif %}
         </div>
     </div>
 </div>

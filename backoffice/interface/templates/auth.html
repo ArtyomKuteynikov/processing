@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Processing</title>
+    <title>Time4Pay</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css"/>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 
@@ -17,7 +17,7 @@
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
     {% load static %}
-    <link rel="icon" href="{% static "logo.png" %}">
+    <link rel="icon" href="{% static "favicon.png" %}">
     <!-- Google Fonts -->
     <link href="https://fonts.gstatic.com" rel="preconnect">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
@@ -98,7 +98,7 @@
 </head>
 
 <body>
-<div style="position: fixed; top: 10px; left: 10px;"><h5 style="color:#026AA2"><img style="height: 23px" src="{% static "logo.png" %}">Процессинг</h5></div>
+<div style="position: fixed; top: 10px; left: 10px;"><h5 style="color:#026AA2"><img style="height: 32px" src="{% static "logo.png" %}">Time4Pay</h5></div>
 <div class="{% if order_id or kyc %} column is-4 {% else %} column is-3 {% endif %}">
 
     <div style="text-align: center;z-index: 1">
@@ -106,7 +106,7 @@
         {% endblock %}
     </div>
 </div>
-<div style="position: fixed; bottom: 10px; left: 10px;"><p>©processing 2023</p></div>
+<div style="position: fixed; bottom: 10px; left: 10px;"><p>©Time4Pay 2023</p></div>
 </body>
 
 </html>

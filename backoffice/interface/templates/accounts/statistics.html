@@ -132,8 +132,8 @@
              class="d-flex align-items-center">
             <form class="d-flex align-items-center"
                   style="margin: 0;padding-top: 0;padding-bottom: 0;padding: 0;box-shadow: none;">
-                <input type="date" name="date-start" style="margin: 1%" value="{{ start }}">
-                <input type="date" name="date-finish" style="margin: 1%" value="{{ finish }}">
+                <input type="date" name="date-start" style="margin: 1%" min="{{ min_data }}" max="{{ max_data }}" value="{{ start }}">
+                <input type="date" name="date-finish" style="margin: 1%" min="{{ min_data }}" max="{{ max_data }}" value="{{ finish }}">
                 <select style="margin: 1%" class="text-blue-light fw-medium form-control" name="groupby">
                     <option value="days" {% if groupby == 'days' %}selected{% endif %}>По дням</option>
                     {% if user.customer.account_type == 'MERCHANT' %}

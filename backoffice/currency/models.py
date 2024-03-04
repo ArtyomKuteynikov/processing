@@ -85,12 +85,12 @@ class ExchangeDirection(models.Model):
 
 class Courses(models.Model):
     pair = models.CharField(max_length=128)
-    binance_in = models.FloatField(default=0)
-    binance_out = models.FloatField(default=0)
-    commex_in = models.FloatField(default=0)
-    commex_out = models.FloatField(default=0)
-    grantex_in = models.FloatField(default=0)
-    grantex_out = models.FloatField(default=0)
+    binance_in = models.FloatField(default=0, verbose_name='Huobi IN')
+    binance_out = models.FloatField(default=0, verbose_name='Huobi OUT')
+    commex_in = models.FloatField(default=0, verbose_name='ByBit IN')
+    commex_out = models.FloatField(default=0, verbose_name='ByBit OUT')
+    grantex_in = models.FloatField(default=0, verbose_name='Grantex IN')
+    grantex_out = models.FloatField(default=0, verbose_name='Grantex OUT')
 
     class Meta:
         db_table = "currency_courses"

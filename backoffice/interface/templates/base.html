@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Processing</title>
+    <title>Time4Pay</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css"/>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 
@@ -19,7 +19,7 @@
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
     {% load static %}
-    <link rel="icon" href="{% static 'logo.png' %}">
+    <link rel="icon" href="{% static 'favicon.png' %}">
     <!-- Google Fonts -->
     <link href="https://fonts.gstatic.com" rel="preconnect">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
@@ -160,7 +160,7 @@
     <header id="header" class="header fixed-top d-flex align-items-center">
 
         <div class="d-flex align-items-center justify-content-between">
-            <h6 class="toggle-sidebar-btn" style="color:#026AA2; font-size: 20px;"><img style="height: 23px" src="{% static 'logo.png' %}">Процессинг</h6>
+            <h6 class="toggle-sidebar-btn" style="color:#026AA2; font-size: 20px;"><img style="height: 32px" src="{% static 'logo.png' %}">Time4Pay</h6>
         </div><!-- End Logo -->
         {% if user.customer.account_type == 'TRADER' %}
         <nav class="header-nav  ms-auto d-none d-lg-block d-md-block d-xl-block">
@@ -210,6 +210,7 @@
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
                         <li class="dropdown-header">
                             У вас {{ user.customer.unread_notifications }} новых уведомлнений
+                            <a onclick="read_all();"><span class="badge rounded-pill bg-primary p-2 ms-2">Прочитано</span></a>
                         </li>
                         {% for i in user.customer.notifications %}
                         <li>
@@ -336,6 +337,12 @@
                 </a>
             </li><!-- End Dashboard Nav -->
             <li class="nav-item">
+                <a class="nav-link collapsed" href="/orders">
+                    <i class="bi bi-cart-check"></i>
+                    <span>Ордеры</span>
+                </a>
+            </li><!-- End Dashboard Nav -->
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="/statistics">
                     <i class="bi bi-bar-chart"></i>
                     <span>Статистика</span>
@@ -434,6 +441,18 @@
                 });
         }
 
+
+     function read_all() {
+        fetch('/read-all/')
+            .then(response => response.json())
+            .then(data => {
+                    location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const checkbox = document.getElementById('traderStatus');
 
@@ -490,7 +509,7 @@
     window.onload = fetchCourseData;
     setInterval(() => {
         fetchCourseData();
-    }, 60000);
+    }, 10000);
 
 
     document.addEventListener('DOMContentLoaded', function () {

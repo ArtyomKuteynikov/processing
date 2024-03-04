@@ -34,22 +34,22 @@ class KYCForm(forms.ModelForm):
 class LimitsForm(forms.ModelForm):
     class Meta:
         model = CardsLimits
-        fields = ['input_min_limit', 'input_operation_limit', 'input_day_limit', 'input_month_limit', 'output_min_limit','output_operation_limit', 'output_dat_limit', 'output_month_limit']
+        fields = ['input_min_limit', 'input_operation_limit', 'input_day_limit', 'input_month_limit', 'output_min_limit', 'output_operation_limit', 'output_dat_limit', 'output_month_limit']
 
 
 class Step1Form(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='', )
-    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='')
+    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '@example_user'}), label='')
     invite_code = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Инвайт код'}), label='')
     # telegram_id = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Telegram ID'}), label='')
-    captcha = ReCaptchaField(label='')
+    # captcha = ReCaptchaField(label='')
 
 
 class Reset1Form(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='', )
-    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='')
+    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '@example_user'}), label='')
     # telegram_id = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Telegram ID'}), label='')
-    captcha = ReCaptchaField(label='')
+    # captcha = ReCaptchaField(label='')
 
 
 class Reset2Form(forms.Form):
@@ -60,7 +60,7 @@ class Reset2Form(forms.Form):
 class LoginForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='', )
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}), label='', )
-    captcha = ReCaptchaField(label='')
+    # captcha = ReCaptchaField(label='')
 
 
 class OTPForm(forms.Form):
@@ -70,16 +70,16 @@ class OTPForm(forms.Form):
 class RequestForm(forms.Form):
     CATEGORIES = [(i.id, i.__str__) for i in WebsitesCategories.objects.all()]
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='Email', )
-    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='Телефон')
+    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '@example_user'}), label='Телеграм')
     website = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'https://example.com'}), label='Сайт-площадка')
     comment = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-control'}), label='Категория', choices=CATEGORIES)
-    captcha = ReCaptchaField(label='')
+    # captcha = ReCaptchaField(label='')
 
 
 class TraderRequestForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'example@gmail.com'}), label='Email', )
-    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='Телефон')
-    captcha = ReCaptchaField(label='')
+    phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '@example_user'}), label='Телеграм')
+    # captcha = ReCaptchaField(label='')
 
 
 class MerchantForm(forms.Form):
@@ -87,14 +87,14 @@ class MerchantForm(forms.Form):
     phone_number = forms.CharField(widget=forms.TextInput(attrs={'placeholder': '+79991234567'}), label='')
     # telegram_id = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Telegram ID'}), label='')
     invite_code = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Инвайт код'}), label='')
-    captcha = ReCaptchaField(label='')
+    # captcha = ReCaptchaField(label='')
 
 
 class SupportForm(forms.Form):
     title = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Суть вашей проблемы'}), label='Тема')
     comment = forms.CharField(widget=forms.Textarea(attrs={'placeholder': 'подробно опишите проблему'}), label='Комментарий')
     file = forms.FileField(label='Файл')
-    captcha = ReCaptchaField(label='')
+    # captcha = ReCaptchaField(label='')
 
 
 class SupportMessageForm(forms.Form):

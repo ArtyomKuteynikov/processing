@@ -33,7 +33,7 @@ import jwt
 disable_installed_extensions_check()
 
 app = FastAPI(
-    title="Processing",
+    title="Time4Pay",
 )
 
 app.add_middleware(
@@ -238,14 +238,14 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     result = await session.execute(select(Network).where((Network.short_name == data.output_link.split('_')[1])))
     network = result.first()
     if not currency or not network:
-        return
+        return None, 406
     website = await session.execute(select(Websites).where((Websites.key == data.website_key) & (Websites.merchant_id == user_id)))
     website = website.first()
     if not website:
-        return
+        return None, 401
     if (await session.execute(select(SettingsModel))).first()[0].website_verification:
         if website[0].verified != 1 or website[0].status != 1:
-            return
+            return None, 403
     output_link = await session.execute(select(Link).where((Link.currency_id == currency[0].id) & (Link.network_id == network[0].id)))
     output_link = output_link.first()
     if data.amount:
@@ -255,14 +255,14 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
         amount = round((data.quantity / float(course)) * currency[0].denomination)
         quantity = round(data.quantity * currency[0].denomination)
     else:
-        return
+        return None, 406
     result = await session.execute(
         select(Balance).where((Balance.account_id == user_id) & (Balance.balance_link_id == output_link[0].id)))
     balance = result.first()
     if not balance:
-        return None
+        return None, 402
     if balance[0].amount < amount and data.side == "OUT":
-        return None
+        return None, 402
     trader_id = None
     order_id = str(uuid.uuid4())
     new_order = Order(
@@ -285,7 +285,7 @@ async def order_create(data: CreateOrder, user_id: int, session: AsyncSession):
     session.add(new_order)
     order = new_order
     await session.commit()
-    return new_order
+    return new_order, 0
 
 
 async def order_get(order_id: int, user_id: int, session: AsyncSession):
@@ -370,20 +370,19 @@ async def create_order(data: CreateOrder, session: AsyncSession = Depends(get_as
         quantity = round(data.quantity)
     if quantity < min_amount:
         raise HTTPException(status_code=400, detail=f"MIN ORDER AMOUNT IS {min_amount} RUB")
-    order = await order_create(data, user.user_ptr_id, session)
+    order, status_code = await order_create(data, user.user_ptr_id, session)
     if not order:
-        raise HTTPException(status_code=404)
+        raise HTTPException(status_code=status_code)
     aio.create_task(timeout_limit(session, order.id))
     if order:
         return JSONResponse(status_code=200, content={
             'link': f'{LINK}/order/start/{order.uuid}',
             'order_id': order.id,
-            'input_link_id': order.input_link_id,
-            'output_link_id': order.output_link_id,
+            'output_link_id': await get_asset_by_link_id(order.output_link_id, session),
             'order_site_id': order.order_site_id,
-            'input_amount': order.input_amount,
-            'output_amount': order.output_amount,
-            'status': order.status,
+            'input_amount': order.input_amount / 100,
+            'output_amount': order.output_amount / await get_asset_denomination(order.output_link_id, session),
+            'status': ORDER_STATUS[order.status],
             'uuid': order.uuid
         })
     else:

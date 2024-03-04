@@ -3,19 +3,26 @@ import csv
 from django.contrib import admin
 from django.db.models import Count, Sum, F
 from customer.models import Notifications
+from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, TruncYear
 from django.http import HttpResponse
 
-from .models import Transaction, Order, Statistics
+from .models import Transaction, Order, Statistics, Results
 from wallet.models import Balance
 from customer.models import Settings
 from interface.utils import send_tg
 
 
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['created', 'sender', 'receiver', 'amount', 'link', 'category', 'status', 'counted', 'denomination']
+    list_display = ['created', 'sender', 'receiver', 'amount_counted', 'link', 'category', 'status', 'counted', 'denomination']
 
     def denomination(self, obj):
         return obj.link.currency.denomination
+
+    def amount_counted(self, obj):
+        return round(obj.amount / obj.link.currency.denomination, 2)
+
+    readonly_fields = ['amount_counted']
+    exclude = ['amount']
 
     def save_model(self, request, obj, form, change):
         if obj.type == 0 and obj.status == 1:
@@ -207,7 +214,10 @@ class StatisticsAdmin(admin.ModelAdmin):
         return obj.link.currency.denomination
 
     def amount_counted(self, obj):
-        return obj.amount/obj.link.currency.denomination
+        return round(obj.amount / obj.link.currency.denomination, 2)
+
+    readonly_fields = ['amount_counted']
+    exclude = ['amount']
 
     def customer_type(self, obj):
         return obj.sender.account_type
@@ -228,6 +238,44 @@ class StatisticsAdmin(admin.ModelAdmin):
         return False
 
 
+class ResultsAdmin(admin.ModelAdmin):
+    list_display = ('created', 'amount', 'type', 'status', 'counted')
+
+    date_hierarchy = 'created'
+    list_filter = ('type', 'status', 'counted', 'site', 'created')
+
+    def changelist_view(self, request, extra_context=None):
+
+        summary_data = self.get_summary_data(request)
+        extra_context = {'summary': summary_data}
+        response = super().changelist_view(request, extra_context)
+        print(response)
+
+        return response
+
+    def get_summary_data(self, request):
+        queryset = self.get_queryset(request)
+        total_amount = queryset.aggregate(total_amount=Sum('amount'))['total_amount']
+        total_count = queryset.count()
+
+        summary_data = {
+            'total_amount': total_amount,
+            'total_count': total_count,
+        }
+
+        return summary_data
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            date=TruncDate('created'),
+            week=TruncWeek('created'),
+            month=TruncMonth('created'),
+            year=TruncYear('created')
+        )
+
+
+admin.site.register(Results, ResultsAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Statistics, StatisticsAdmin)
